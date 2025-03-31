@@ -23,13 +23,14 @@ We are able to predict epistasis in any antibody sequence, and our predictions a
 Vaccine and theraputic antibody design are shifted from a "one mutation at a time" approach to a more sophisticated view that leverages the complex dependencies within antibody structure and function, informing strategies such as sequential therapeutic interventions
 
 ## What are the potential bad outcomes? Any overall concerns here?
+- We are more influenced by noise in the data/not enough data than by the actual biology.
 - Uncertainty measurements are too high to rely on the predictions.
-- Our predictions to not match exsiting experimental inferences.
+- Our predictions do not match exsiting experimental inferences.
 
 ## Is there pre-existing work/code that could be leveraged to explore the potential for bad outcomes? To do proof-of-concept investigation to get a first-pass answer for the underlying scientific question?
 The project is based upon the DASM model predictions. For a proof-of-concept, once simple predictions can be made, we should start by testing antibody sequences with known epistatic relationships, for example:
 - https://www.pnas.org/doi/10.1073/pnas.2413884122, Schulz 2025 - experimentally test 2^10=1024 variants (variable in the heavy chain only) of a SARS-CoV-2-specific antibody, COV107-23, that targets the receptor binding domain of the viral spike protein, and find an epistasis hotspot at residue 53 (also an intersting paper as they fit a pairwise and global model to their experimental results).
-- https://elifesciences.org/articles/83628.pdf, Phillips 2023 - experiemntally test antibody library of CH65 antibody, which is a broad antibody to diverse H1 influenza strain. They identify epistasis both in the heavy chain, light chain, and between both. This group has other papers about antibody epistasis as well.
+- https://elifesciences.org/articles/83628.pdf, Phillips 2023 - experimentally test antibody library of CH65 antibody, which is a broad antibody to diverse H1 influenza strain. They identify epistasis both in the heavy chain, light chain, and between both. This group has other papers about antibody epistasis as well.
 
 ## Are there any other categorically different approaches that could be applied here?
 Not that I am aware of.
@@ -44,20 +45,21 @@ Validations for pairwise epistasis:
 - experimental data such as mentioned three questions back
 - structurally resolved antibodies
 - co-occurence and *order of occurence* of mutations in existing antibody trees.
+
+
 Validations for background dependent epistasis:
-- data from Whitehead lab that does DMS on 9 different genetic backgrounds
+- data from Whitehead lab that does DMS on 9 different genetic backgrounds (https://www.nature.com/articles/s41467-024-48072-z)
 - DMS data on different antibodies 
 
 ## Is it possible that better data would make this project irrelevant?
 Not soon:
 - Pairwise epistasis experimental measurements for a such a large antibody space are not possible with the current technologies. 
-- Specific interactions and cases can be tested experimentally as a more accurate test, but these probes can be led by a computational method such as the one proposed here.
+- Specific interactions and cases can be tested experimentally as a more accurate test, but these specific probes can be directed by a computational method such as the one proposed here.
 
 ## Sketch the approach, broken down into steps, with expected amounts of time and intermediate steps for each.
 
-
 ### Stage 1 (1 months):
-Write codebase that calculates epistasis by perturbing positions. Specifically:
+Write code that calculates epistasis by perturbing positions. Specifically:
 - Take a sequence. 
 - For every position in the sequence, mutate it into every possible amino acid and measure deviations in the other positions. 
 - Calculate some measure of uncertainty for these predictions. 
@@ -68,12 +70,13 @@ Use method on known sequences with experimentally proven epistatic relationships
 - If not, stop and rethink.
 
 ### Stage 2 (1 month)
-Create similar analysis for background dependent epistasis.
-Further validations on experimental data for both on datasets.
-- Obtain and/or organize Whitehead lab data.
+- Create similar analysis for background dependent epistasis.
+- Further validations on experimental data for both on datasets.
+  - Obtain and/or organize Whitehead lab data.
 
 ### Stage 3 (?)
-Calculate co-occurence and order of occurence for mutations in antibody trees. See it epistatic patterns found in DASM match this.
+Calculate co-occurence and order of occurence for mutations in antibody trees. 
+See if epistatic patterns found in DASM match this.
 
 ### Stage 3 (?)
 If we have systemic predictions of epistasis that work, we can use this to widen our understanding of their general evolutionary process:
