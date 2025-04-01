@@ -12,7 +12,9 @@ This work can:
 ## How is it done today, and what are the limits of current practice?
 Current approaches to studying antibody epistasis include:
 1. Deep mutational scanning (DMS) experiments that measure binding or expression for thousands of variants. Limitation: are labor-intensive and so limited to specific antibodies and antigens.
+%EM Also, most DMSs are point mutations only, right?
 2. Computational predictions based on structural models are possible, but these might not be accurate enough to catch the complex interactions within the protein in its bound and unbound states.
+%EM In any case it seems like evolutionary information is a complement to structural information. Hugh pointed out the other day that things that work well to stabilize a structure (e.g. hydrophobics on the outside) can cause bad biophysical properties in the real world.
 
 ## What's new in your approach and why do you think it will be successful?
 It uses a model (DASM) that is trained on antibody sequences and today does the most accurate job at predicting selection factors per sequence.
@@ -20,23 +22,30 @@ We rely on this model to test the relationship between pairs of mutations and th
 
 ## What is a best case scenario hypothetical result? Try to be as specific as possible. Use your imagination!
 We are able to predict epistasis in any antibody sequence, and our predictions are experimentally validated as correct.
+%EM We know Johanne Jacobsen https://www.ous-research.no/jjacobsenlab who seems willing to make and test antibodies for us. Also David Glass (see email forward).
 Vaccine and theraputic antibody design are shifted from a "one mutation at a time" approach to a more sophisticated view that leverages the complex dependencies within antibody structure and function, informing strategies such as sequential therapeutic interventions
 
 ## What are the potential bad outcomes? Any overall concerns here?
 - We are more influenced by noise in the data/not enough data than by the actual biology.
 - Uncertainty measurements are too high to rely on the predictions.
-- Our predictions do not match exsiting experimental inferences.
+- Our predictions do not match existing experimental inferences.
 
 ## Is there pre-existing work/code that could be leveraged to explore the potential for bad outcomes? To do proof-of-concept investigation to get a first-pass answer for the underlying scientific question?
 The project is based upon the DASM model predictions. For a proof-of-concept, once simple predictions can be made, we should start by testing antibody sequences with known epistatic relationships, for example:
-- https://www.pnas.org/doi/10.1073/pnas.2413884122, Schulz 2025 - experimentally test 2^10=1024 variants (variable in the heavy chain only) of a SARS-CoV-2-specific antibody, COV107-23, that targets the receptor binding domain of the viral spike protein, and find an epistasis hotspot at residue 53 (also an intersting paper as they fit a pairwise and global model to their experimental results).
+- https://www.pnas.org/doi/10.1073/pnas.2413884122, Schulz 2025 - experimentally test 2^10=1024 variants (variable in the heavy chain only) of a SARS-CoV-2-specific antibody, COV107-23, that targets the receptor binding domain of the viral spike protein, and find an epistasis hotspot at residue 53 (also an interesting paper as they fit a pairwise and global model to their experimental results).
 - https://elifesciences.org/articles/83628.pdf, Phillips 2023 - experimentally test antibody library of CH65 antibody, which is a broad antibody to diverse H1 influenza strain. They identify epistasis both in the heavy chain, light chain, and between both. This group has other papers about antibody epistasis as well.
+
+%EM These are great. It would be neat if we could train on some covid repertoires for the first (we have some, called Ye) and some flu repertoires for the second (ask Mackenzie?).
 
 ## Are there any other categorically different approaches that could be applied here?
 Not that I am aware of.
+%EM Well, if one had a structure one could use https://www.science.org/doi/10.1126/science.add2187 or https://www.biorxiv.org/content/10.1101/2024.07.09.602403v2 . It would be interesting to compare to these, both with a "real" PDB structure and also with an AlphaFold structure. The authors of the Hermes, the latter, are "lab friends" and are keen to collaborate. Hugh knows the MPNN folks.
+
+%EM More about Hermes: https://www.pnas.org/doi/10.1073/pnas.2300838121 . The best intro is probably her video https://online.kitp.ucsb.edu/online/viralimmune24/nourmohammad/rm/jwvideo.html 
 
 ## If this is a methods project, what methods will you compare to? Can you get them running before writing new code?
 Not a methods paper (?)
+%EM Above
 
 ## What data will you use? Are there appropriate hold-out sets?
 Predictions will be made using existing DASM models. 
@@ -46,6 +55,7 @@ Validations for pairwise epistasis:
 - structurally resolved antibodies
 - co-occurence and *order of occurence* of mutations in existing antibody trees.
 
+%EM I wonder how Hermes would do on the Schulz data. We could start a chat with them.
 
 Validations for background dependent epistasis:
 - data from Whitehead lab that does DMS on 9 different genetic backgrounds (https://www.nature.com/articles/s41467-024-48072-z)
@@ -80,7 +90,7 @@ See if epistatic patterns found in DASM match this.
 
 ### Stage 3 (?)
 If we have systemic predictions of epistasis that work, we can use this to widen our understanding of their general evolutionary process:
-- How prevalant is epistasis and in what sections of the antibody?
+- How prevalent is epistasis and in what sections of the antibody?
 - What order interactions do we see (first, >2)
 - Are the epistasis interaction global or local? See https://www.pnas.org/doi/full/10.1073/pnas.1804015115 and https://www.pnas.org/doi/10.1073/pnas.2413884122. 
 
