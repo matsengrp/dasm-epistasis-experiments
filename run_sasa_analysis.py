@@ -1,11 +1,81 @@
 #!/usr/bin/env python3
 """
-Solvent Accessibility Analysis Script
+SASA Analysis Script: Filtration and Analysis Logic
 
-This script calculates SASA and RSA for PDB structures with V/D/J gene metadata integration.
-Based on the Jupyter notebook solvent_accessibility_analysis.ipynb.
+## Overview
 
-Usage:
+Performs **Solvent Accessible Surface Area (SASA)** analysis on antibody-antigen complexes to quantify binding effects on surface accessibility.
+
+## Data Sources
+
+Uses **SAbDab (Structural Antibody Database)** metadata for V/J genes, sequences, and chain identifications.
+
+## Filtering Pipeline (4 Stages)
+
+### Stage 1: File Discovery
+Scans PDB directory for `*.pdb` files.
+
+### Stage 2: Metadata-Based Filtering
+
+**V/J Gene & Sequence Consistency Filter:**
+Ensures identical V/J genes (`va`, `ja`, `vb`, `jb`) and chain sequences (`chainseq_a`, `chainseq_b`) within each PDB.
+
+**Organism Filter (optional):**
+Filters by species if `--organism` specified.
+
+### Stage 3: Chain Completeness Filter
+Requires heavy + light + antigen chain(s) for complete analysis.
+
+### Stage 4: File Limit
+Applies `--max-files` limit if specified.
+
+## SASA Calculation: Three-Scenario Analysis
+
+Calculates SASA in three contexts to isolate binding effects:
+
+### Scenario 1: `heavy_light_antigen` (Complete Complex)
+Heavy + Light + Antigen chains → analyzes antibody residues in bound state.
+
+### Scenario 2: `heavy_light` (Antibody Alone)
+Heavy + Light chains → measures unbound antibody accessibility.
+
+### Scenario 3: `heavy_only` (Heavy Chain Isolation)
+Heavy chain only → measures heavy chain without light chain.
+
+## SASA Calculation Method
+
+Uses DSSP with Wilke reference values to calculate absolute SASA (Ų) and relative SASA (0-1 scale). Includes Cα coordinates.
+
+## Effect Calculations
+
+Quantifies binding effects by comparing scenarios:
+
+### Antigen Binding Effect
+```
+sasa_antigen_effect = sasa_heavy_light_antigen - sasa_heavy_light
+```
+Measures how antigen binding changes antibody accessibility (negative = buried, positive = exposed).
+
+### Light Chain Effect
+```
+sasa_light_effect = sasa_heavy_light - sasa_heavy_only
+```
+Measures how light chain affects heavy chain accessibility. Both absolute and relative changes calculated.
+
+## Output Data Structure
+
+**Key columns**: Structure info, V/J genes, raw SASA/RSA values for each scenario, antigen/light chain effects (absolute & relative), and Cα coordinates.
+
+## Quality Control Features
+
+Automatic chain detection, multiple antigen support, error resilience, intermediate saving, and comprehensive logging.
+
+## Use Cases
+
+Designed for large-scale antibody-antigen binding studies, epitope mapping, paratope analysis, and structural bioinformatics research.
+
+## Usage
+
     python run_sasa_analysis.py --help
     python run_sasa_analysis.py --scheme opig-imgt --max-files 50 --output results.csv
 """
@@ -224,8 +294,8 @@ class ProteinMetadataExtractor:
         # Load abid_info table (V/D/J genes, organism)
         if os.path.exists(self.abid_info_path):
             self.abid_df = pd.read_table(self.abid_info_path)
-            # Select relevant columns: pdbid, organism, va, ja, vb, jb
-            required_cols = ["pdbid", "organism", "va", "ja", "vb", "jb"]
+            # Select relevant columns: pdbid, organism, va, ja, vb, jb, chainseq_a, chainseq_b
+            required_cols = ["pdbid", "organism", "va", "ja", "vb", "jb", "chainseq_a", "chainseq_b"]
             available_cols = [col for col in required_cols if col in self.abid_df.columns]
             self.abid_df = self.abid_df[available_cols]
             if self.verbose:
@@ -307,7 +377,7 @@ class ProteinMetadataExtractor:
         return metadata
     
     def get_pdbs_with_consistent_vj_genes(self):
-        """Get PDB IDs where all entries have the same V and J genes."""
+        """Get PDB IDs where all entries have the same V and J genes and chain sequences."""
         if self.abid_df is None or len(self.abid_df) == 0:
             return set(), 0, 0
 
@@ -322,12 +392,18 @@ class ProteinMetadataExtractor:
             vb_unique = group['vb'].dropna().unique() if 'vb' in group.columns else []
             jb_unique = group['jb'].dropna().unique() if 'jb' in group.columns else []
 
-            # PDB is consistent if each gene type has at most one unique value
+            # Check if all chain sequences are the same within this PDB
+            chainseq_a_unique = group['chainseq_a'].dropna().unique() if 'chainseq_a' in group.columns else []
+            chainseq_b_unique = group['chainseq_b'].dropna().unique() if 'chainseq_b' in group.columns else []
+
+            # PDB is consistent if each gene type and sequence has at most one unique value
             is_consistent = (
                 len(va_unique) <= 1 and
                 len(ja_unique) <= 1 and
                 len(vb_unique) <= 1 and
-                len(jb_unique) <= 1
+                len(jb_unique) <= 1 and
+                len(chainseq_a_unique) <= 1 and
+                len(chainseq_b_unique) <= 1
             )
 
             if is_consistent:
@@ -336,7 +412,7 @@ class ProteinMetadataExtractor:
         removed_count = total_pdbs - len(consistent_pdbs)
 
         if self.verbose:
-            print(f"V/J gene consistency filter: {len(consistent_pdbs)} PDBs kept, {removed_count} PDBs removed (out of {total_pdbs} total)")
+            print(f"V/J gene and sequence consistency filter: {len(consistent_pdbs)} PDBs kept, {removed_count} PDBs removed (out of {total_pdbs} total)")
 
         return consistent_pdbs, len(consistent_pdbs), removed_count
 
@@ -409,7 +485,7 @@ class SASACalculator:
             'antigen_chains': metadata.get('antigen_chains', '')
         }])
     
-    def _calculate_sasa(self, pdb_path, scenario="heavy_light_antigen", site_range=None):
+    def _calculate_sasa(self, pdb_path, scenario="heavy_light_antigen"):
         """Internal method to calculate SASA with protein metadata.
 
         Parameters:
@@ -491,9 +567,7 @@ class SASACalculator:
                 residue_num = res_id[1]
                 insertion_code = res_id[2].strip()
                 
-                # Apply site range filter if specified
-                if site_range and (residue_num < site_range[0] or residue_num > site_range[1]):
-                    continue
+                # Site range filtering removed - now analyzes all residues
                 
                 # Get DSSP data
                 dssp_data = dssp[key]
@@ -544,7 +618,7 @@ class SASACalculator:
             if temp_pdb_path.exists():
                 temp_pdb_path.unlink()
     
-    def calculate_multi_scenario_sasa(self, pdb_path, site_range=None):
+    def calculate_multi_scenario_sasa(self, pdb_path):
         """Calculate SASA for all three scenarios and compare."""
 
         scenarios = ["heavy_light_antigen", "heavy_light", "heavy_only"]
@@ -553,8 +627,7 @@ class SASACalculator:
         # Calculate SASA for each scenario
         for scenario in scenarios:
             try:
-                results = self._calculate_sasa(pdb_path, scenario=scenario,
-                                             site_range=site_range)
+                results = self._calculate_sasa(pdb_path, scenario=scenario)
                 if not results.empty:
                     scenario_results[scenario] = results
             except Exception as e:
@@ -625,8 +698,7 @@ class SASACalculator:
             shutil.rmtree(self.temp_dir)
 
 
-def process_pdb_directory(pdb_directory, site_range=None,
-                         output_file=None, max_files=None, include_metadata=True,
+def process_pdb_directory(pdb_directory, output_file=None, max_files=None,
                          metadata_extractor=None, organism_filter=None, verbose=False):
     """
     Process all PDB files in a directory with simplified unified filtering pipeline.
@@ -635,14 +707,10 @@ def process_pdb_directory(pdb_directory, site_range=None,
     -----------
     pdb_directory : str or Path
         Directory containing PDB files
-    site_range : tuple or None
-        Range of residue numbers to include (min, max) or None for all
     output_file : str or None
         Output CSV file path or None to return DataFrame only
     max_files : int or None
         Maximum number of files to process (for testing)
-    include_metadata : bool
-        Whether to include V/D/J gene and organism metadata
     metadata_extractor : ProteinMetadataExtractor or None
         Metadata extractor instance, or None to create one
     organism_filter : str or None
@@ -655,12 +723,12 @@ def process_pdb_directory(pdb_directory, site_range=None,
     pd.DataFrame
         Combined results for all PDB files with metadata
     """
-    # Initialize metadata extractor if requested
-    if include_metadata and metadata_extractor is None:
+    # Initialize metadata extractor (always enabled)
+    if metadata_extractor is None:
         metadata_extractor = ProteinMetadataExtractor(verbose=verbose)
 
     # Apply unified filtering pipeline
-    filter_pipeline = StructureFilter(metadata_extractor if include_metadata else None, verbose=verbose)
+    filter_pipeline = StructureFilter(metadata_extractor, verbose=verbose)
     pdb_files = filter_pipeline.apply_filters(pdb_directory, organism_filter, max_files)
 
     if not pdb_files:
@@ -670,7 +738,7 @@ def process_pdb_directory(pdb_directory, site_range=None,
             print(f"No valid PDB files found in {pdb_directory}")
         return pd.DataFrame()
 
-    calculator = SASACalculator(metadata_extractor=metadata_extractor if include_metadata else None)
+    calculator = SASACalculator(metadata_extractor=metadata_extractor)
     all_results = []
     failed_files = []
 
@@ -678,7 +746,7 @@ def process_pdb_directory(pdb_directory, site_range=None,
 
     for pdb_file in tqdm(pdb_files, desc="Processing PDBs"):
         try:
-            results = calculator.calculate_multi_scenario_sasa(str(pdb_file), site_range)
+            results = calculator.calculate_multi_scenario_sasa(str(pdb_file))
             if not results.empty:
                 all_results.append(results)
             else:
@@ -716,28 +784,18 @@ def process_pdb_directory(pdb_directory, site_range=None,
                 print(f"Warning: Could not save intermediate results: {save_error}")
     
     # Reorder columns for better readability
-    if include_metadata:
-        column_order = [
-            'pdb_id', 'organism', 'v_gene_light', 'j_gene_light', 'v_gene_heavy', 'j_gene_heavy',
-            'heavy_chain_id', 'light_chain_id', 'antigen_chains', 'chain_id',
-            'residue_number', 'insertion_code', 'amino_acid',
-            # Raw SASA values
-            'sasa_heavy_light_antigen', 'sasa_heavy_light', 'sasa_heavy_only',
-            'rsa_heavy_light_antigen', 'rsa_heavy_light', 'rsa_heavy_only',
-            # Effect calculations
-            'sasa_antigen_effect', 'rsa_antigen_effect', 'sasa_antigen_relative', 'rsa_antigen_relative',
-            'sasa_light_effect', 'rsa_light_effect', 'sasa_light_relative', 'rsa_light_relative',
-            'ca_coordinates'
-        ]
-    else:
-        column_order = [
-            'pdb_id', 'chain_id', 'residue_number', 'insertion_code', 'amino_acid',
-            'sasa_heavy_light_antigen', 'sasa_heavy_light', 'sasa_heavy_only',
-            'rsa_heavy_light_antigen', 'rsa_heavy_light', 'rsa_heavy_only',
-            'sasa_antigen_effect', 'rsa_antigen_effect', 'sasa_antigen_relative', 'rsa_antigen_relative',
-            'sasa_light_effect', 'rsa_light_effect', 'sasa_light_relative', 'rsa_light_relative',
-            'ca_coordinates'
-        ]
+    column_order = [
+        'pdb_id', 'organism', 'v_gene_light', 'j_gene_light', 'v_gene_heavy', 'j_gene_heavy',
+        'heavy_chain_id', 'light_chain_id', 'antigen_chains', 'chain_id',
+        'residue_number', 'insertion_code', 'amino_acid',
+        # Raw SASA values
+        'sasa_heavy_light_antigen', 'sasa_heavy_light', 'sasa_heavy_only',
+        'rsa_heavy_light_antigen', 'rsa_heavy_light', 'rsa_heavy_only',
+        # Effect calculations
+        'sasa_antigen_effect', 'rsa_antigen_effect', 'sasa_antigen_relative', 'rsa_antigen_relative',
+        'sasa_light_effect', 'rsa_light_effect', 'sasa_light_relative', 'rsa_light_relative',
+        'ca_coordinates'
+    ]
     
     # Only include columns that exist in the DataFrame
     available_columns = [col for col in column_order if col in combined_results.columns]
@@ -749,20 +807,19 @@ def process_pdb_directory(pdb_directory, site_range=None,
     print(f"Failed to process: {len(failed_files)} files")
     print(f"Total residues analyzed: {len(combined_results)}")
     print(f"Unique PDB structures: {combined_results['pdb_id'].nunique()}")
-    
-    if include_metadata:
-        if 'v_gene_heavy' in combined_results.columns:
-            v_heavy_count = combined_results['v_gene_heavy'].notna().sum()
-            j_heavy_count = combined_results['j_gene_heavy'].notna().sum()
-            print(f"Residues with heavy chain V gene data: {v_heavy_count}")
-            print(f"Residues with heavy chain J gene data: {j_heavy_count}")
-        if 'v_gene_light' in combined_results.columns:
-            v_light_count = combined_results['v_gene_light'].notna().sum()
-            j_light_count = combined_results['j_gene_light'].notna().sum()
-            print(f"Residues with light chain V gene data: {v_light_count}")
-            print(f"Residues with light chain J gene data: {j_light_count}")
-        if 'organism' in combined_results.columns:
-            print(f"Unique organisms: {combined_results['organism'].nunique()}")
+
+    if 'v_gene_heavy' in combined_results.columns:
+        v_heavy_count = combined_results['v_gene_heavy'].notna().sum()
+        j_heavy_count = combined_results['j_gene_heavy'].notna().sum()
+        print(f"Residues with heavy chain V gene data: {v_heavy_count}")
+        print(f"Residues with heavy chain J gene data: {j_heavy_count}")
+    if 'v_gene_light' in combined_results.columns:
+        v_light_count = combined_results['v_gene_light'].notna().sum()
+        j_light_count = combined_results['j_gene_light'].notna().sum()
+        print(f"Residues with light chain V gene data: {v_light_count}")
+        print(f"Residues with light chain J gene data: {j_light_count}")
+    if 'organism' in combined_results.columns:
+        print(f"Unique organisms: {combined_results['organism'].nunique()}")
     
     # Save to file if requested
     if output_file:
@@ -834,7 +891,7 @@ def main():
 Examples:
   python run_sasa_analysis.py --scheme opig-imgt --output results.csv
   python run_sasa_analysis.py --scheme rcsb --max-files 10 --verbose
-  python run_sasa_analysis.py --pdb-dir /path/to/pdbs --no-metadata --output basic_results.csv
+  python run_sasa_analysis.py --pdb-dir /path/to/pdbs --output basic_results.csv
 
 Output columns include:
   - sasa_heavy_light_antigen, sasa_heavy_light, sasa_heavy_only: Raw SASA values
@@ -856,14 +913,10 @@ Output columns include:
     
     # Antibody chains are now automatically detected from metadata
     
-    parser.add_argument('--site-range', nargs=2, type=int, metavar=('MIN', 'MAX'),
-                       help='Residue number range to analyze (e.g., --site-range 1 150)')
     
     parser.add_argument('--max-files', type=int,
                        help='Maximum number of PDB files to process (for testing)')
     
-    parser.add_argument('--no-metadata', action='store_true',
-                       help='Disable V/D/J gene metadata extraction')
     
     # Metadata file paths are now hardcoded in ProteinMetadataExtractor
     
@@ -894,23 +947,17 @@ Output columns include:
         print(f"Error: PDB directory not found: {pdb_directory}")
         sys.exit(1)
     
-    # Convert site range to tuple if provided
-    site_range = tuple(args.site_range) if args.site_range else None
-    
-    # Set up metadata extraction
-    include_metadata = not args.no_metadata
-    metadata_extractor = None
-    if include_metadata:
-        metadata_extractor = ProteinMetadataExtractor(verbose=args.verbose)
+    # Initialize metadata extractor (always enabled)
+    metadata_extractor = ProteinMetadataExtractor(verbose=args.verbose)
     
     # Print configuration
     print(f"=== Multi-Scenario SASA Analysis Configuration ===")
     print(f"PDB directory: {pdb_directory}")
     print(f"Filtering: Unified pipeline (V/J consistency + complete chains)")
     print(f"Chain requirement: heavy + light + antigen chains required")
-    print(f"Site range: {site_range if site_range else 'All residues'}")
+    print(f"Site range: All residues")
     print(f"Max files: {args.max_files if args.max_files else 'All files'}")
-    print(f"Include metadata: {include_metadata}")
+    print(f"Include metadata: Always enabled")
     print(f"Organism filter: {args.organism if args.organism else 'All organisms'}")
     print(f"Output file: {args.output}")
     print(f"Scenarios: heavy+light+antigen, heavy+light, heavy-only")
@@ -920,10 +967,8 @@ Output columns include:
     try:
         results = process_pdb_directory(
             pdb_directory=pdb_directory,
-            site_range=site_range,
             output_file=args.output,
             max_files=args.max_files,
-            include_metadata=include_metadata,
             metadata_extractor=metadata_extractor,
             organism_filter=args.organism,
             verbose=args.verbose
