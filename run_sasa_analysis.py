@@ -93,6 +93,12 @@ from tqdm import tqdm
 from Bio.PDB import PDBParser, PDBIO, Select
 from Bio.PDB.DSSP import DSSP
 
+# Constants - File paths and directories
+SABDAB_ABID_INFO_PATH = "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_2024-01-26_abid_info.tsv"
+SABDAB_CHAIN_INFO_PATH = "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_all_2024-01-26.tsv"
+LIBCIFPP_DATA_DIR = "/home/nharel/miniforge3/envs/netam_env/share/libcifpp"
+PDB_BASE_DIR = "/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db"
+
 # Set random seed for reproducibility
 random.seed(42)
 np.random.seed(42)
@@ -281,8 +287,8 @@ class ProteinMetadataExtractor:
     """Extract protein metadata from SAbDab summary tables."""
 
     def __init__(self, verbose=False):
-        self.abid_info_path = "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_2024-01-26_abid_info.tsv"
-        self.chain_info_path = "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_all_2024-01-26.tsv"
+        self.abid_info_path = SABDAB_ABID_INFO_PATH
+        self.chain_info_path = SABDAB_CHAIN_INFO_PATH
         self.abid_df = None
         self.chain_df = None
         self.verbose = verbose
@@ -929,7 +935,7 @@ Output columns include:
     args = parser.parse_args()
     
     # Set up environment
-    os.environ.setdefault('LIBCIFPP_DATA_DIR', '/home/nharel/miniforge3/envs/netam_env/share/libcifpp')
+    os.environ.setdefault('LIBCIFPP_DATA_DIR', LIBCIFPP_DATA_DIR)
 
     # Validate output file early to catch issues before processing
     if not validate_output_file(args.output):
@@ -940,7 +946,7 @@ Output columns include:
     if args.pdb_dir:
         pdb_directory = args.pdb_dir
     else:
-        base_dir = "/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db"
+        base_dir = PDB_BASE_DIR
         pdb_directory = f"{base_dir}/pdb/{args.scheme}"
     
     if not os.path.exists(pdb_directory):
