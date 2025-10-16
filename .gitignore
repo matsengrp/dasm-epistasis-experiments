@@ -175,4 +175,5 @@ cython_debug/
 
 #custom
 _ignore/
-_output
+_output/
+germline/ighv_tree*
