@@ -109,6 +109,57 @@ def add_column_aa_one_mutation_away_from_aa(
     )
 
 
+def sort_antibody_sites(sites):
+    """
+    Sort antibody numbering sites properly, handling both IMGT and Chothia insertion codes.
+
+    IMGT uses decimal notation: 30, 30.1, 30.2, 31
+    Chothia uses letter notation: 30, 30A, 30B, 31
+
+    Args:
+        sites: Iterable of site identifiers (can be int, float, or str)
+
+    Returns:
+        List of sites sorted in proper antibody numbering order
+
+    Examples:
+        >>> sort_antibody_sites(['1', '1A', '2', '3'])
+        ['1', '1A', '2', '3']
+        >>> sort_antibody_sites([1, 1.1, 1.2, 2])
+        [1, 1.1, 1.2, 2]
+        >>> sort_antibody_sites(['30', '30A', '30B', '31', '31A'])
+        ['30', '30A', '30B', '31', '31A']
+    """
+    def site_key(site):
+        site_str = str(site)
+
+        # Handle IMGT decimal notation (e.g., '30.1', '30.2')
+        if '.' in site_str:
+            parts = site_str.split('.')
+            base_num = int(parts[0])
+            decimal_part = int(parts[1]) if len(parts) > 1 else 0
+            # Return: (base number, decimal part, empty string for letter)
+            # This ensures 30 < 30.1 < 30.2 < 31
+            return (base_num, decimal_part, '')
+
+        # Handle Chothia letter notation (e.g., '30A', '30B')
+        # Split into number and letter parts
+        num_part = ''
+        letter_part = ''
+        for char in site_str:
+            if char.isdigit():
+                num_part += char
+            else:
+                letter_part += char
+
+        base_num = int(num_part) if num_part else 0
+        # Return: (base number, 0 for no decimal, letter part)
+        # Empty letter sorts before any letter: 30 < 30A < 30B < 31
+        return (base_num, 0, letter_part)
+
+    return sorted(sites, key=site_key)
+
+
 def add_germline_information(
     pcp_df, site_df, germline_codons_path="germline/germline_codons.csv"
 ):
