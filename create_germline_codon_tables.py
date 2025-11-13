@@ -113,14 +113,18 @@ def translate_to_amino_acids(input_fasta, output_fasta):
     return output_fasta
 
 
-def run_anarci(input_fasta, output_prefix, numbering_scheme):
+def run_anarci(input_fasta, output_prefix, numbering_scheme, custom_load_bash_command='source ~/.bashrc && conda activate netam_env'):
     """Run ANARCI to number sequences."""
     print(f"\nRunning ANARCI with {numbering_scheme} numbering...")
 
+    # Construct the full command with custom environment loading
     anarci_command = (
         f'ANARCI -i {input_fasta} -o {output_prefix} '
         f'-s {numbering_scheme} -r heavy --use_species human --csv --assign_germline'
     )
+
+    if custom_load_bash_command != None:
+        anarci_command = f'{custom_load_bash_command} && {anarci_command}'
 
     result = subprocess.run(
         anarci_command,
