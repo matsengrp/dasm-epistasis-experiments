@@ -608,12 +608,16 @@ def add_germline_information(
     # Add germline comparison columns
     site_df_with_germline["is_germline_aa"] = (
         site_df_with_germline.parent_aa == site_df_with_germline.germline_amino_acid
+    ).where(
+        ~(site_df_with_germline.germline_amino_acid.isna())
     )
 
     # Add germline codon comparison if parent_codon exists
     if "parent_codon" in site_df_with_germline.columns:
         site_df_with_germline["is_germline_codon"] = (
             site_df_with_germline.parent_codon == site_df_with_germline.germline_codon
+        ).where(
+            ~(site_df_with_germline.germline_codon.isna())
         )
 
     return site_df_with_germline
