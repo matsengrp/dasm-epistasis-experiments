@@ -176,4 +176,5 @@ cython_debug/
 #custom
 _ignore/
 _output/
+figures/
 germline/ighv_tree*
