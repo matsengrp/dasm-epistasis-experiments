@@ -14,6 +14,91 @@ from dnsmex import dasm_oe, dnsm_oe, dasm_zoo, dnsm_zoo
 GERMLINE_PATH_DICTIONARY = {'imgt':'germline/germline_codons_imgt.csv', 'chothia':'germline/germline_codons_chothia.csv'}
 
 
+def get_cdr_definitions(numbering_scheme='imgt', chain='heavy'):
+    """
+    Get CDR region definitions based on numbering scheme and chain type.
+
+    Parameters:
+    -----------
+    numbering_scheme : str
+        Either 'imgt' or 'chothia' (default: 'imgt')
+    chain : str
+        Either 'heavy' or 'light' (default: 'heavy')
+        Only affects Chothia numbering scheme
+
+    Returns:
+    --------
+    list of tuples : List of (start, end) tuples for each CDR region
+        [(cdr1_start, cdr1_end), (cdr2_start, cdr2_end), (cdr3_start, cdr3_end)]
+
+    Notes:
+    ------
+    CDR boundaries:
+    - IMGT (same for heavy and light): CDR1 (27-38), CDR2 (56-65), CDR3 (105-117)
+    - Chothia Heavy: CDR1 (26-32), CDR2 (52-56), CDR3 (95-102)
+    - Chothia Light: CDR1 (24-34), CDR2 (50-56), CDR3 (89-97)
+
+    Example:
+    --------
+    >>> cdr_regions = get_cdr_definitions('imgt')
+    >>> df['is_cdr'] = df['site'].apply(lambda x: any(start <= x <= end for start, end in cdr_regions))
+    """
+    if numbering_scheme == 'imgt':
+        # IMGT CDR boundaries (same for heavy and light chains)
+        return [(27, 38), (56, 65), (105, 117)]
+    elif numbering_scheme == 'chothia':
+        if chain == 'heavy':
+            # Chothia heavy chain CDR boundaries
+            return [(26, 32), (52, 56), (95, 102)]
+        elif chain == 'light':
+            # Chothia light chain CDR boundaries
+            return [(24, 34), (50, 56), (89, 97)]
+        else:
+            raise ValueError(f"Invalid chain: {chain}. Must be 'heavy' or 'light'.")
+    else:
+        raise ValueError(f"Invalid numbering_scheme: {numbering_scheme}. Must be 'imgt' or 'chothia'.")
+
+
+def is_in_cdr(site, numbering_scheme='imgt', chain='heavy'):
+    """
+    Check if a site is in any CDR region.
+
+    Parameters:
+    -----------
+    site : int or str
+        Site number to check (can be int like 30 or str like '30A' for Chothia insertions)
+    numbering_scheme : str
+        Either 'imgt' or 'chothia' (default: 'imgt')
+    chain : str
+        Either 'heavy' or 'light' (default: 'heavy')
+
+    Returns:
+    --------
+    bool : True if site is in a CDR region, False otherwise
+
+    Example:
+    --------
+    >>> is_in_cdr(30, 'imgt')  # CDR1 in IMGT
+    True
+    >>> is_in_cdr('30A', 'chothia')  # CDR1 in Chothia with insertion
+    True
+    >>> is_in_cdr(50, 'imgt')  # Framework region
+    False
+    """
+    # Extract base number from site (handles both int and str with insertion codes)
+    site_str = str(site)
+
+    # Handle IMGT decimal notation (e.g., '30.1', '30.2')
+    if '.' in site_str:
+        base_num = int(site_str.split('.')[0])
+    else:
+        # Handle Chothia letter notation (e.g., '30A', '30B') or plain numbers
+        num_part = ''.join(c for c in site_str if c.isdigit())
+        base_num = int(num_part) if num_part else 0
+
+    cdr_regions = get_cdr_definitions(numbering_scheme, chain)
+    return any(start <= base_num <= end for start, end in cdr_regions)
+
 
 def create_codon_aa_mutation_dict():
     """Create a dictionary mapping (parent_codon, target_aa) -> boolean"""
@@ -216,20 +301,7 @@ def add_cdr_shading(ax, sorted_sites, cdr_regions=None, numbering_scheme='imgt',
     >>> add_cdr_shading(ax, sorted_sites, numbering_scheme='chothia', chain='heavy')
     """
     if cdr_regions is None:
-        if numbering_scheme == 'imgt':
-            # IMGT CDR boundaries (same for heavy and light chains)
-            cdr_regions = [(27, 38), (56, 65), (105, 117)]
-        elif numbering_scheme == 'chothia':
-            if chain == 'heavy':
-                # Chothia heavy chain CDR boundaries
-                cdr_regions = [(26, 32), (52, 56), (95, 102)]
-            elif chain == 'light':
-                # Chothia light chain CDR boundaries
-                cdr_regions = [(24, 34), (50, 56), (89, 97)]
-            else:
-                raise ValueError(f"Invalid chain: {chain}. Must be 'heavy' or 'light'.")
-        else:
-            raise ValueError(f"Invalid numbering_scheme: {numbering_scheme}. Must be 'imgt' or 'chothia'.")
+        cdr_regions = get_cdr_definitions(numbering_scheme, chain)
 
     # Create a mapping from site to x-position (index in sorted sites)
     site_to_position = {site: i for i, site in enumerate(sorted_sites)}
