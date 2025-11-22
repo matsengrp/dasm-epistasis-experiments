@@ -47,10 +47,11 @@ class NeutralMutationProbability(MutabilityContainer):
         neutral_model_name=DEFAULT_NEUTRAL_MODEL,
         subset_size=None,
         branch_length_method='from_tree',
+        numbering_scheme='imgt',
     ):
         """
         Initialize NeutralMutationProbability.
-        
+
         Parameters:
         -----------
         dataset : str
@@ -65,18 +66,21 @@ class NeutralMutationProbability(MutabilityContainer):
             - 'from_synonymous_mutations': Calculate from synonymous mutations
             - 'from_nonsynonymous_mutations': Calculate from nonsynonymous mutations
             - 'from_total_mutations': Calculate from total mutations
+        numbering_scheme : str, optional
+            Antibody numbering scheme to use (default: 'imgt')
+            Options: 'imgt', 'chothia', etc.
         """
         # Validate branch_length_method
-        valid_methods = ['from_tree', 'from_synonymous_mutations', 
+        valid_methods = ['from_tree', 'from_synonymous_mutations',
                         'from_nonsynonymous_mutations', 'from_total_mutations']
         if branch_length_method not in valid_methods:
             raise ValueError(
                 f"branch_length_method must be one of {valid_methods}, "
                 f"got '{branch_length_method}'"
             )
-        
+
         self.branch_length_method = branch_length_method
-        
+
         # Call parent __init__ but don't pass branch_length parameter
         # (we'll override the method that uses it)
         super().__init__(
@@ -84,6 +88,7 @@ class NeutralMutationProbability(MutabilityContainer):
             neutral_model_name=neutral_model_name,
             branch_length=None,  # Not used in this subclass
             subset_size=subset_size,
+            numbering_scheme=numbering_scheme,
         )
 
         # Validate requirements based on method
@@ -207,7 +212,6 @@ class NeutralMutationProbability(MutabilityContainer):
                 "pcp_index",
                 "site",
                 "unannotated_nuc_site",
-                "is_cdr",
                 "parent_codon",
                 "parent_aa",
                 "child_codon",
@@ -286,7 +290,6 @@ class NeutralMutationProbability(MutabilityContainer):
                 "current_aa",
                 "transition_aa",
                 "site",
-                "is_cdr",
                 "parent_codon",
                 "parent_aa",
                 "child_codon",
@@ -313,11 +316,12 @@ class CachedNeutralMutationProbability:
         neutral_model_name=DEFAULT_NEUTRAL_MODEL,
         subset_size=None,
         branch_length_method='from_tree',
+        numbering_scheme='imgt',
         cache_dir=localify(f"ANALYSIS_CACHE/"),
     ):
         """
         Initialize CachedNeutralMutationProbability.
-        
+
         Parameters:
         -----------
         dataset : str
@@ -332,6 +336,9 @@ class CachedNeutralMutationProbability:
             - 'from_synonymous_mutations': Calculate from synonymous mutations
             - 'from_nonsynonymous_mutations': Calculate from nonsynonymous mutations
             - 'from_total_mutations': Calculate from total mutations
+        numbering_scheme : str, optional
+            Antibody numbering scheme to use (default: 'imgt')
+            Options: 'imgt', 'chothia', etc.
         cache_dir : str
             Directory to store cache files
         """
@@ -339,17 +346,18 @@ class CachedNeutralMutationProbability:
         self.dataset = dataset
         self.subset_size = subset_size
         self.branch_length_method = branch_length_method
+        self.numbering_scheme = numbering_scheme
         self.cache_dir = cache_dir
 
         # Create cache directory if it doesn't exist
         os.makedirs(cache_dir, exist_ok=True)
 
-        # Generate cache file paths with subset and branch_length_method indication
+        # Generate cache file paths with subset, branch_length_method, and numbering_scheme indication
         cache_parts = [f"neutral_mutation_prob", neutral_model_name, dataset]
-        
+
         if subset_size:
             cache_parts.append(f"subset{subset_size}")
-        
+
         # Add branch length method to cache name (short form for readability)
         method_abbrev = {
             'from_tree': 'tree',
@@ -358,7 +366,10 @@ class CachedNeutralMutationProbability:
             'from_total_mutations': 'total'
         }
         cache_parts.append(f"bl_{method_abbrev[branch_length_method]}")
-        
+
+        # Add numbering scheme to cache name
+        cache_parts.append(numbering_scheme)
+
         cache_base = f"{cache_dir}/{'_'.join(cache_parts)}"
 
         self.cache_files = {
@@ -387,20 +398,21 @@ class CachedNeutralMutationProbability:
         print(f"Loading NeutralMutationProbability data from gzip cache{subset_msg}{method_msg}...")
 
         try:
+            # Explicitly specify site column as string to handle alphanumeric sites (e.g., "82A" for Chothia)
             self.nuc_neutral_df = pd.read_csv(
-                self.cache_files["nucleotide"], compression="gzip"
+                self.cache_files["nucleotide"], compression="gzip", dtype={"site": str}
             )
             self.aa_neutral_df = pd.read_csv(
-                self.cache_files["amino_acid"], compression="gzip"
+                self.cache_files["amino_acid"], compression="gzip", dtype={"site": str}
             )
             self.aa_to_any_neutral_df = pd.read_csv(
-                self.cache_files["amino_acid_to_any"], compression="gzip"
+                self.cache_files["amino_acid_to_any"], compression="gzip", dtype={"site": str}
             )
             self.codon_neutral_df = pd.read_csv(
-                self.cache_files["codon"], compression="gzip"
+                self.cache_files["codon"], compression="gzip", dtype={"site": str}
             )
             self.codon_to_any_neutral_df = pd.read_csv(
-                self.cache_files["codon_to_any"], compression="gzip"
+                self.cache_files["codon_to_any"], compression="gzip", dtype={"site": str}
             )
             self.pcp_df = pd.read_csv(self.cache_files["pcp_df"], compression="gzip")
 
@@ -443,10 +455,11 @@ class CachedNeutralMutationProbability:
 
         # Create the container using NeutralMutationProbability
         container = NeutralMutationProbability(
-            self.dataset, 
-            self.neutral_model_name, 
+            self.dataset,
+            self.neutral_model_name,
             subset_size=self.subset_size,
-            branch_length_method=self.branch_length_method
+            branch_length_method=self.branch_length_method,
+            numbering_scheme=self.numbering_scheme
         )
 
         # Copy the dataframes
@@ -511,10 +524,13 @@ if __name__ == "__main__":
                         choices=['from_tree', 'from_synonymous_mutations',
                                 'from_nonsynonymous_mutations', 'from_total_mutations'],
                         help='Method for calculating branch lengths (default: from_total_mutations)')
+    parser.add_argument('--numbering-scheme', type=str, default='imgt',
+                        help='Antibody numbering scheme to use (default: imgt)')
 
     args = parser.parse_args()
 
     neutral_probabilties = CachedNeutralMutationProbability(
         args.dataset,
-        branch_length_method=args.branch_length_method
+        branch_length_method=args.branch_length_method,
+        numbering_scheme=args.numbering_scheme
     )
