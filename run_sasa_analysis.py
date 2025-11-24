@@ -10,23 +10,21 @@ Performs **Solvent Accessible Surface Area (SASA)** analysis on antibody-antigen
 
 Uses **SAbDab (Structural Antibody Database)** metadata for V/J genes, sequences, and chain identifications.
 
-## Filtering Pipeline (4 Stages)
+## Filtering Pipeline (5 Stages)
 
 ### Stage 1: File Discovery
 Scans PDB directory for `*.pdb` files.
 
-### Stage 2: Metadata-Based Filtering
-
-**V/J Gene & Sequence Consistency Filter:**
-Ensures identical V/J genes (`va`, `ja`, `vb`, `jb`) and chain sequences (`chainseq_a`, `chainseq_b`) within each PDB.
-
-**Organism Filter (optional):**
-Filters by species if `--organism` specified.
+### Stage 2: Organism Filter (optional)
+Filters by species if `--organism` specified. Cheapest and most selective filter.
 
 ### Stage 3: Chain Completeness Filter
-Requires heavy + light + antigen chain(s) for complete analysis.
+Requires heavy + light + antigen chain(s) for complete analysis. Fast metadata check.
 
-### Stage 4: File Limit
+### Stage 4: V/J Gene & Sequence Consistency Filter
+Ensures identical V/J genes (`va`, `ja`, `vb`, `jb`) and chain sequences (`chainseq_a`, `chainseq_b`) within each PDB. More expensive groupby operations.
+
+### Stage 5: File Limit
 Applies `--max-files` limit if specified.
 
 ## SASA Calculation: Three-Scenario Analysis
@@ -46,6 +44,17 @@ Heavy chain only → measures heavy chain without light chain.
 
 Uses DSSP with Wilke reference values to calculate absolute SASA (Ų) and relative SASA (0-1 scale). Includes Cα coordinates.
 
+## Backbone Angle Analysis
+
+Calculates phi and psi dihedral angles **once** from the original PDB structure using BioPython's PPBuilder:
+
+- **Phi (φ)**: N-Cα-C-N dihedral angle (measures backbone rotation)
+- **Psi (ψ)**: Cα-C-N-Cα dihedral angle (measures backbone rotation)
+- Angles reported in degrees (-180° to 180°)
+- Terminal residues: phi=NaN at N-terminus, psi=NaN at C-terminus
+- Calculated only for antibody heavy and light chains
+- Same values across all three scenarios (intrinsic property of the atomic coordinates)
+
 ## Effect Calculations
 
 Quantifies binding effects by comparing scenarios:
@@ -64,7 +73,7 @@ Measures how light chain affects heavy chain accessibility. Both absolute and re
 
 ## Output Data Structure
 
-**Key columns**: Structure info, V/J genes, raw SASA/RSA values for each scenario, antigen/light chain effects (absolute & relative), and Cα coordinates.
+**Key columns**: Structure info, V/J genes, raw SASA/RSA values for each scenario, phi/psi backbone angles, antigen/light chain effects (absolute & relative), and Cα coordinates.
 
 ## Quality Control Features
 
@@ -92,6 +101,7 @@ from tqdm import tqdm
 # BioPython imports
 from Bio.PDB import PDBParser, PDBIO, Select
 from Bio.PDB.DSSP import DSSP
+from Bio.PDB.Polypeptide import PPBuilder
 
 # Constants - File paths and directories
 SABDAB_ABID_INFO_PATH = (
@@ -178,16 +188,28 @@ class StructureFilter:
             self._print_filter_summary()
             return final_files
 
-        # Stage 2: Metadata-based filtering
-        valid_ids = self._apply_metadata_filters(organism_filter)
-        files_with_metadata = self._filter_by_pdb_ids(all_files, valid_ids)
-        self._record_stage(
-            "metadata_filtered", len(files_with_metadata), files_with_metadata
-        )
+        # Stage 2: Organism filter (if specified) - cheapest, most selective
+        if organism_filter:
+            organism_ids = self._get_organism_filtered_ids(organism_filter)
+            files_after_organism = self._filter_by_pdb_ids(all_files, organism_ids)
+            self._record_stage(
+                "organism_filtered",
+                len(files_after_organism),
+                files_after_organism,
+                note=f"organism='{organism_filter}'"
+            )
+        else:
+            files_after_organism = all_files
+            self._record_stage(
+                "organism_filtered",
+                len(files_after_organism),
+                files_after_organism,
+                note="no organism filter"
+            )
 
-        # Stage 3: Chain validation (require heavy + light + antigen)
+        # Stage 3: Chain completeness filter - cheap metadata check
         files_with_complete_chains = self._filter_by_complete_chains(
-            files_with_metadata
+            files_after_organism
         )
         self._record_stage(
             "complete_chains",
@@ -195,41 +217,27 @@ class StructureFilter:
             files_with_complete_chains,
         )
 
-        # Stage 4: Apply max_files limit
+        # Stage 4: V/J consistency filter - more expensive groupby operations
+        consistent_ids, kept, removed = self.metadata.get_pdbs_with_consistent_vj_genes()
+        files_with_consistent_vj = self._filter_by_pdb_ids(
+            files_with_complete_chains, consistent_ids
+        )
+        self._record_stage(
+            "vj_consistent",
+            len(files_with_consistent_vj),
+            files_with_consistent_vj,
+            note=f"{kept} kept, {removed} removed"
+        )
+
+        # Stage 5: Apply max_files limit
         if max_files:
-            final_files = files_with_complete_chains[:max_files]
+            final_files = files_with_consistent_vj[:max_files]
             self._record_stage("max_files_limited", len(final_files), final_files)
         else:
-            final_files = files_with_complete_chains
+            final_files = files_with_consistent_vj
 
         self._print_filter_summary()
         return final_files
-
-    def _apply_metadata_filters(self, organism_filter):
-        """Apply organism and V/J consistency filters."""
-        if organism_filter:
-            # Get organism-filtered PDBs
-            organism_ids = self._get_organism_filtered_ids(organism_filter)
-            # Get V/J consistent PDBs
-            consistent_ids, kept, removed = (
-                self.metadata.get_pdbs_with_consistent_vj_genes()
-            )
-            # Intersect both filters
-            valid_ids = set(organism_ids) & set(consistent_ids)
-
-            if self.verbose:
-                print(
-                    f"Organism filter: {len(organism_ids)} PDBs match '{organism_filter}'"
-                )
-                print(f"V/J consistency: {kept} PDBs kept, {removed} removed")
-                print(f"Combined filters: {len(valid_ids)} PDBs")
-        else:
-            # Only V/J consistency filter
-            valid_ids, kept, removed = self.metadata.get_pdbs_with_consistent_vj_genes()
-            if self.verbose:
-                print(f"V/J consistency filter: {kept} PDBs kept, {removed} removed")
-
-        return valid_ids
 
     def _get_organism_filtered_ids(self, organism_filter):
         """Get PDB IDs matching organism filter."""
@@ -302,10 +310,21 @@ class StructureFilter:
             return
 
         print("\n=== Filtering Pipeline Summary ===")
+        prev_count = None
         for stage, data in self.filter_stats.items():
             count = data["count"]
             note = f" ({data['note']})" if data.get("note") else ""
-            print(f"{stage.replace('_', ' ').title()}: {count} files{note}")
+
+            # Calculate how many were dropped at this stage
+            if prev_count is not None:
+                dropped = prev_count - count
+                drop_pct = (dropped / prev_count * 100) if prev_count > 0 else 0
+                drop_info = f", dropped {dropped} ({drop_pct:.1f}%)"
+            else:
+                drop_info = ""
+
+            print(f"{stage.replace('_', ' ').title()}: {count} files{note}{drop_info}")
+            prev_count = count
 
         # Show sample of final files
         if self.filter_stats:
@@ -507,7 +526,7 @@ class ProteinMetadataExtractor:
 class SASACalculator:
     """Calculate SASA and RSA for PDB structures with protein metadata integration."""
 
-    def __init__(self, temp_dir="_temp_sasa", metadata_extractor=None):
+    def __init__(self, temp_dir="_temp_sasa", metadata_extractor=None, numbering_scheme=None):
         import os
 
         # Make temp directory unique per process to avoid conflicts
@@ -515,6 +534,7 @@ class SASACalculator:
         self.temp_dir = Path(unique_temp_dir)
         self.temp_dir.mkdir(exist_ok=True)
         self.metadata_extractor = metadata_extractor
+        self.numbering_scheme = numbering_scheme
 
         # Wilke reference values for calculating absolute ASA from relative ASA
         self.wilke_reference = {
@@ -540,6 +560,42 @@ class SASACalculator:
             "V": 174.0,
         }
 
+    def _format_site_label(self, residue_number, insertion_code):
+        """
+        Create a standardized site label from residue number and insertion code.
+
+        For Chothia: "81A" stays as "81A"
+        For IMGT: "112A" becomes "112.1", "112B" becomes "112.2", etc.
+        No insertion: "100" stays as "100" (string, not "100.0")
+
+        Parameters:
+        -----------
+        residue_number : int
+            The residue number
+        insertion_code : str
+            The insertion code (single letter or empty string)
+
+        Returns:
+        --------
+        str
+            Formatted site label (always string, never float)
+        """
+        # Convert residue_number to int first to ensure no decimal points
+        residue_num_int = int(residue_number)
+
+        if not insertion_code:
+            # Return as string without decimal point (e.g., "100" not "100.0")
+            return str(residue_num_int)
+
+        # For IMGT scheme, convert A->1, B->2, C->3, etc.
+        if self.numbering_scheme and "imgt" in self.numbering_scheme.lower():
+            # Convert insertion code letter to number (A=1, B=2, C=3, ...)
+            insertion_num = ord(insertion_code.upper()) - ord('A') + 1
+            return f"{residue_num_int}.{insertion_num}"
+        else:
+            # For Chothia and other schemes, keep as is (e.g., "81A")
+            return f"{residue_num_int}{insertion_code}"
+
     def _create_nan_result(self, pdb_id, scenario, metadata):
         """Create a DataFrame with NaN values when SASA calculation cannot be performed."""
         return pd.DataFrame(
@@ -548,6 +604,7 @@ class SASACalculator:
                     "chain_id": np.nan,
                     "residue_number": np.nan,
                     "insertion_code": np.nan,
+                    "site": np.nan,
                     "amino_acid": np.nan,
                     "sasa": np.nan,
                     "rsa": np.nan,
@@ -678,11 +735,15 @@ class SASACalculator:
                 except:
                     pass
 
+                # Create formatted site label
+                site = self._format_site_label(residue_num, insertion_code)
+
                 # Build result row with both SASA data and metadata
                 row_data = {
                     "chain_id": chain_id,
                     "residue_number": residue_num,
                     "insertion_code": insertion_code,
+                    "site": site,
                     "amino_acid": aa,
                     "sasa": abs_asa,  # Absolute ASA in Å²
                     "rsa": rel_asa,  # Relative ASA (0-1 scale)
@@ -702,15 +763,84 @@ class SASACalculator:
 
                 sasa_data.append(row_data)
 
-            return pd.DataFrame(sasa_data)
+            df = pd.DataFrame(sasa_data)
+            # Ensure site column is always string type
+            if not df.empty and 'site' in df.columns:
+                df['site'] = df['site'].astype(str)
+            return df
 
         finally:
             # Clean up temporary file
             if temp_pdb_path.exists():
                 temp_pdb_path.unlink()
 
+    def _calculate_phi_psi(self, pdb_path):
+        """Calculate phi/psi backbone angles once from original structure.
+
+        Returns DataFrame with columns: chain_id, residue_number, insertion_code, site, phi, psi
+        """
+        parser = PDBParser(PERMISSIVE=True, QUIET=True)
+        structure = parser.get_structure("pdb", pdb_path)
+
+        # Get PDB ID for metadata
+        pdb_id = Path(pdb_path).stem
+        chain_info = {}
+        if self.metadata_extractor:
+            chain_info = self.metadata_extractor.get_chain_info(pdb_id)
+
+        # Only calculate for antibody chains (heavy and light)
+        heavy_chain = chain_info.get("heavy_chain", "")
+        light_chain = chain_info.get("light_chain", "")
+        target_chains = [c for c in [heavy_chain, light_chain] if c]
+
+        if not target_chains:
+            return pd.DataFrame()
+
+        # Calculate phi/psi angles using PPBuilder
+        ppb = PPBuilder()
+        peptides = ppb.build_peptides(structure[0])
+
+        phi_psi_data = []
+        for peptide in peptides:
+            phi_psi_list = peptide.get_phi_psi_list()
+            for residue, (phi, psi) in zip(peptide, phi_psi_list):
+                chain_id = residue.get_parent().id
+
+                # Only process antibody chains
+                if chain_id not in target_chains:
+                    continue
+
+                res_id = residue.id
+                residue_num = res_id[1]
+                insertion_code = res_id[2].strip()
+
+                # Convert angles to degrees
+                phi_deg = np.degrees(phi) if phi is not None else np.nan
+                psi_deg = np.degrees(psi) if psi is not None else np.nan
+
+                # Create site label
+                site = self._format_site_label(residue_num, insertion_code)
+
+                phi_psi_data.append({
+                    "chain_id": chain_id,
+                    "residue_number": residue_num,
+                    "insertion_code": insertion_code,
+                    "site": site,
+                    "phi": phi_deg,
+                    "psi": psi_deg,
+                })
+
+        df = pd.DataFrame(phi_psi_data)
+        # Ensure site column is always string type
+        if not df.empty and 'site' in df.columns:
+            df['site'] = df['site'].astype(str)
+        return df
+
     def calculate_multi_scenario_sasa(self, pdb_path):
         """Calculate SASA for all three scenarios and compare."""
+
+        # Calculate phi/psi angles once from original structure
+        phi_psi_df = self._calculate_phi_psi(pdb_path)
 
         scenarios = ["heavy_light_antigen", "heavy_light", "heavy_only"]
         scenario_results = {}
@@ -745,6 +875,7 @@ class SASACalculator:
             "chain_id",
             "residue_number",
             "insertion_code",
+            "site",
             "amino_acid",
             "ca_coordinates",
         ]
@@ -755,22 +886,37 @@ class SASACalculator:
             base_cols + metadata_cols + ["sasa", "rsa"]
         ].copy()
         comparison = comparison.rename(
-            columns={"sasa": f"sasa_{first_scenario}", "rsa": f"rsa_{first_scenario}"}
+            columns={
+                "sasa": f"sasa_{first_scenario}",
+                "rsa": f"rsa_{first_scenario}",
+            }
         )
 
         # Merge other scenarios
         for scenario in list(scenario_results.keys())[1:]:
             scenario_data = scenario_results[scenario][
-                ["chain_id", "residue_number", "insertion_code", "sasa", "rsa"]
+                ["chain_id", "residue_number", "insertion_code", "site", "sasa", "rsa"]
             ]
             scenario_data = scenario_data.rename(
-                columns={"sasa": f"sasa_{scenario}", "rsa": f"rsa_{scenario}"}
+                columns={
+                    "sasa": f"sasa_{scenario}",
+                    "rsa": f"rsa_{scenario}",
+                }
             )
             comparison = pd.merge(
                 comparison,
                 scenario_data,
-                on=["chain_id", "residue_number", "insertion_code"],
+                on=["chain_id", "residue_number", "insertion_code", "site"],
                 how="outer",
+            )
+
+        # Merge phi/psi angles (calculated once from original structure)
+        if not phi_psi_df.empty:
+            comparison = pd.merge(
+                comparison,
+                phi_psi_df,
+                on=["chain_id", "residue_number", "insertion_code", "site"],
+                how="left",
             )
 
         # Calculate differences and relative changes
@@ -829,6 +975,7 @@ def process_pdb_directory(
     metadata_extractor=None,
     organism_filter=None,
     verbose=False,
+    numbering_scheme=None,
 ):
     """
     Process all PDB files in a directory with simplified unified filtering pipeline.
@@ -847,6 +994,9 @@ def process_pdb_directory(
         Filter to process only structures from specific organism
     verbose : bool
         Whether to print verbose output
+    numbering_scheme : str or None
+        Numbering scheme used (e.g., "opig-imgt", "opig-chothia", "rcsb")
+        Used to format site labels correctly
 
     Returns:
     --------
@@ -870,7 +1020,7 @@ def process_pdb_directory(
             print(f"No valid PDB files found in {pdb_directory}")
         return pd.DataFrame()
 
-    calculator = SASACalculator(metadata_extractor=metadata_extractor)
+    calculator = SASACalculator(metadata_extractor=metadata_extractor, numbering_scheme=numbering_scheme)
     all_results = []
     failed_files = []
 
@@ -929,7 +1079,11 @@ def process_pdb_directory(
         "chain_id",
         "residue_number",
         "insertion_code",
+        "site",
         "amino_acid",
+        # Backbone angles (same across all scenarios)
+        "phi",
+        "psi",
         # Raw SASA values
         "sasa_heavy_light_antigen",
         "sasa_heavy_light",
@@ -1145,6 +1299,7 @@ Output columns include:
             metadata_extractor=metadata_extractor,
             organism_filter=args.organism,
             verbose=args.verbose,
+            numbering_scheme=args.scheme,
         )
 
         if not results.empty:
