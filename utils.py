@@ -41,7 +41,6 @@ def get_cdr_definitions(numbering_scheme='imgt', chain='heavy'):
     Example:
     --------
     >>> cdr_regions = get_cdr_definitions('imgt')
-    >>> df['is_cdr'] = df['site'].apply(lambda x: any(start <= x <= end for start, end in cdr_regions))
     """
     if numbering_scheme == 'imgt':
         # IMGT CDR boundaries (same for heavy and light chains)
@@ -463,6 +462,9 @@ def load_and_process_dasm_data(
     # Add one mutation away annotation
     add_column_aa_one_mutation_away_from_codon(aa_site_subs_selection_df_germline)
 
+    # Add cdr annotation
+    aa_site_subs_selection_df_germline['is_cdr'] = aa_site_subs_selection_df_germline['site'].apply(is_in_cdr, numbering_scheme=numbering_scheme)
+
     return site_sub_probs_df, pcp_df, aa_site_subs_selection_df_germline
 
 
@@ -602,6 +604,10 @@ def load_and_process_dnsm_data(
         site_sub_probs_df,
         numbering_scheme=numbering_scheme
     )
+
+    # Add cdr annotation
+    site_sub_probs_df_germline['is_cdr'] = site_sub_probs_df_germline['site'].apply(is_in_cdr, numbering_scheme=numbering_scheme)
+
 
     return site_sub_probs_df_germline, pcp_df
 
