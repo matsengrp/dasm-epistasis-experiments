@@ -135,12 +135,11 @@ def add_column_aa_one_mutation_away_from_codon(
     # Create the dictionary
     CODON_AA_MUTATION_DICT = create_codon_aa_mutation_dict()
 
-    # Add the one_mutation_away column to the dataframe with progress bar
-    tqdm.pandas(desc="Adding one_mutation_away column")
-    df["one_mutation_away"] = df.progress_apply(
-        lambda row: CODON_AA_MUTATION_DICT[(row[parent_codon_col], row[target_aa_col])],
-        axis=1,
-    )
+    # Vectorized lookup using map - much faster than apply
+    print("Adding one_mutation_away column (vectorized)...")
+    df["one_mutation_away"] = df[[parent_codon_col, target_aa_col]].apply(
+        lambda row: (row[parent_codon_col], row[target_aa_col]), axis=1
+    ).map(CODON_AA_MUTATION_DICT)
 
 
 def create_aa_aa_mutation_dict():
@@ -192,12 +191,11 @@ def add_column_aa_one_mutation_away_from_aa(
     # Create the dictionary
     AA_AA_MUTATION_DICT = create_aa_aa_mutation_dict()
 
-    # Add the one_mutation_away column to the dataframe with progress bar
-    tqdm.pandas(desc="Adding one_mutation_away column")
-    df["one_mutation_away"] = df.progress_apply(
-        lambda row: AA_AA_MUTATION_DICT[(row[parent_aa_col], row[target_aa_col])],
-        axis=1,
-    )
+    # Vectorized lookup using map - much faster than apply
+    print("Adding one_mutation_away column (vectorized)...")
+    df["one_mutation_away"] = df[[parent_aa_col, target_aa_col]].apply(
+        lambda row: (row[parent_aa_col], row[target_aa_col]), axis=1
+    ).map(AA_AA_MUTATION_DICT)
 
 
 def sort_antibody_sites(sites):
