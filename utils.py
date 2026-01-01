@@ -404,8 +404,12 @@ def load_and_process_dasm_data(
             )
 
         # Prepare figure output path
-        fig_out_path = None
-        if figures_dir is not None:
+        # Use a temporary directory if figures_dir is not provided
+        if figures_dir is None:
+            import tempfile
+            temp_dir = tempfile.mkdtemp()
+            fig_out_path = f"{temp_dir}/sites-oe-V1,3,4.svg"
+        else:
             fig_out_path = f"{figures_dir}/sites-oe-V1,3,4.svg"
 
         # Run write_sites_oe
@@ -538,8 +542,12 @@ def load_and_process_dnsm_data(
             )
 
         # Prepare figure output path
-        fig_out_path = None
-        if figures_dir is not None:
+        # Use a temporary directory if figures_dir is not provided
+        if figures_dir is None:
+            import tempfile
+            temp_dir = tempfile.mkdtemp()
+            fig_out_path = f"{temp_dir}/sites-oe-V1,3,4.svg"
+        else:
             fig_out_path = f"{figures_dir}/sites-oe-V1,3,4.svg"
 
         # Run write_sites_oe for DNSM
