@@ -156,17 +156,38 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
     return vfamily_results, vfamily_results_per_aa, vfamily_results_per_codon
 
 
-def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs_df_germline, output_path, branch_length_method='synonymous_mutation_freq_branch'):
+def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs_df_germline, output_path, branch_length_method='synonymous_mutation_freq_branch', remove_leaves=True, pcp_df=None):
     """
     Calculate mutation rates for all sites across different V gene families.
 
     Args:
         site_sub_probs_df_germline (pd.DataFrame): DataFrame with site substitution probabilities and germline info
         output_path (str): Base output path to save the results CSV files (without extension)
+        branch_length_method (str): Method to use for branch length calculation
+        remove_leaves (bool): Whether to remove leaf nodes from the analysis (default: True)
+        pcp_df (pd.DataFrame): Parent-child pair DataFrame with 'child_is_leaf' column (required if remove_leaves=True)
 
     Returns:
         tuple: (results_df, results_per_aa_df) - DataFrames with results for overall and per-AA analysis
     """
+    # Remove leaf nodes if requested
+    if remove_leaves:
+        if pcp_df is None:
+            print("Warning: remove_leaves=True but pcp_df is None. Skipping leaf removal.")
+        else:
+            print("Removing leaf nodes from the analysis")
+            pcp_df_for_merge = pcp_df[['child_is_leaf']].copy()
+            pcp_df_for_merge['pcp_index'] = pcp_df_for_merge.index
+            site_sub_probs_df_germline = pd.merge(
+                site_sub_probs_df_germline,
+                pcp_df_for_merge,
+                on='pcp_index',
+                how='inner'
+            )
+            site_sub_probs_df_germline = site_sub_probs_df_germline[
+                ~site_sub_probs_df_germline['child_is_leaf']
+            ]
+
     # Run for all sites
     all_results = []
     all_results_per_aa = []
