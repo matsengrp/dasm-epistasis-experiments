@@ -41,7 +41,6 @@ def get_cdr_definitions(numbering_scheme='imgt', chain='heavy'):
     Example:
     --------
     >>> cdr_regions = get_cdr_definitions('imgt')
-    >>> df['is_cdr'] = df['site'].apply(lambda x: any(start <= x <= end for start, end in cdr_regions))
     """
     if numbering_scheme == 'imgt':
         # IMGT CDR boundaries (same for heavy and light chains)
@@ -136,12 +135,10 @@ def add_column_aa_one_mutation_away_from_codon(
     # Create the dictionary
     CODON_AA_MUTATION_DICT = create_codon_aa_mutation_dict()
 
-    # Add the one_mutation_away column to the dataframe with progress bar
-    tqdm.pandas(desc="Adding one_mutation_away column")
-    df["one_mutation_away"] = df.progress_apply(
-        lambda row: CODON_AA_MUTATION_DICT[(row[parent_codon_col], row[target_aa_col])],
-        axis=1,
-    )
+    # Fully vectorized lookup using MultiIndex - much faster than apply
+    print("Adding one_mutation_away column (vectorized)...")
+    multi_idx = pd.MultiIndex.from_arrays([df[parent_codon_col], df[target_aa_col]])
+    df["one_mutation_away"] = multi_idx.map(CODON_AA_MUTATION_DICT)
 
 
 def create_aa_aa_mutation_dict():
@@ -193,12 +190,10 @@ def add_column_aa_one_mutation_away_from_aa(
     # Create the dictionary
     AA_AA_MUTATION_DICT = create_aa_aa_mutation_dict()
 
-    # Add the one_mutation_away column to the dataframe with progress bar
-    tqdm.pandas(desc="Adding one_mutation_away column")
-    df["one_mutation_away"] = df.progress_apply(
-        lambda row: AA_AA_MUTATION_DICT[(row[parent_aa_col], row[target_aa_col])],
-        axis=1,
-    )
+    # Fully vectorized lookup using MultiIndex - much faster than apply
+    print("Adding one_mutation_away column (vectorized)...")
+    multi_idx = pd.MultiIndex.from_arrays([df[parent_aa_col], df[target_aa_col]])
+    df["one_mutation_away"] = multi_idx.map(AA_AA_MUTATION_DICT)
 
 
 def sort_antibody_sites(sites):
@@ -409,8 +404,12 @@ def load_and_process_dasm_data(
             )
 
         # Prepare figure output path
-        fig_out_path = None
-        if figures_dir is not None:
+        # Use a temporary directory if figures_dir is not provided
+        if figures_dir is None:
+            import tempfile
+            temp_dir = tempfile.mkdtemp()
+            fig_out_path = f"{temp_dir}/sites-oe-V1,3,4.svg"
+        else:
             fig_out_path = f"{figures_dir}/sites-oe-V1,3,4.svg"
 
         # Run write_sites_oe
@@ -462,6 +461,9 @@ def load_and_process_dasm_data(
 
     # Add one mutation away annotation
     add_column_aa_one_mutation_away_from_codon(aa_site_subs_selection_df_germline)
+
+    # Add cdr annotation
+    aa_site_subs_selection_df_germline['is_cdr'] = aa_site_subs_selection_df_germline['site'].apply(is_in_cdr, numbering_scheme=numbering_scheme)
 
     return site_sub_probs_df, pcp_df, aa_site_subs_selection_df_germline
 
@@ -540,8 +542,12 @@ def load_and_process_dnsm_data(
             )
 
         # Prepare figure output path
-        fig_out_path = None
-        if figures_dir is not None:
+        # Use a temporary directory if figures_dir is not provided
+        if figures_dir is None:
+            import tempfile
+            temp_dir = tempfile.mkdtemp()
+            fig_out_path = f"{temp_dir}/sites-oe-V1,3,4.svg"
+        else:
             fig_out_path = f"{figures_dir}/sites-oe-V1,3,4.svg"
 
         # Run write_sites_oe for DNSM
@@ -602,6 +608,10 @@ def load_and_process_dnsm_data(
         site_sub_probs_df,
         numbering_scheme=numbering_scheme
     )
+
+    # Add cdr annotation
+    site_sub_probs_df_germline['is_cdr'] = site_sub_probs_df_germline['site'].apply(is_in_cdr, numbering_scheme=numbering_scheme)
+
 
     return site_sub_probs_df_germline, pcp_df
 
