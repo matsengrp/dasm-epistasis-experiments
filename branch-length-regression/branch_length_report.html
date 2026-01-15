@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>DASM Branch Length Analysis</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" />
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"
+  type="text/javascript"></script>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">DASM Branch Length Analysis</h1>
+</header>
+<h1 id="dasm-branch-length-vs-mutation-frequency">DASM Branch Length vs
+Mutation Frequency</h1>
+<h2 id="summary">Summary</h2>
+<p>We find a remarkably linear relationship between raw mutation
+frequency and DASM-inferred branch length, with <span
+class="math inline">\(R^2 = 0.974\)</span>. The fitted relationship
+is:</p>
+<p><span class="math display">\[t_{\text{DASM}} = 1.76 \cdot
+f_{\text{mut}} - 0.001\]</span></p>
+<p>where <span class="math inline">\(f_{\text{mut}}\)</span> is the
+fraction of nucleotide sites that differ between parent and child
+sequences.</p>
+<h2 id="background-dasm-model">Background: DASM Model</h2>
+<p>The DASM (Deep Amino acid Selection Model) predicts the probability
+of observing a child sequence given a parent sequence. For a codon at
+position <span class="math inline">\(j\)</span> mutating to codon <span
+class="math inline">\(c\)</span>, the probability is:</p>
+<p><span class="math display">\[\ell_{j,c}(t, X) = p_{j,c}(t, X) \times
+f_{j,a}(\bar{X})\]</span></p>
+<p>where:</p>
+<ul>
+<li><span class="math inline">\(p_{j,c}(t, X)\)</span> is the neutral
+probability of mutation to codon <span class="math inline">\(c\)</span>
+at site <span class="math inline">\(j\)</span> after time <span
+class="math inline">\(t\)</span> (from the Thrifty SHM model)</li>
+<li><span class="math inline">\(f_{j,a}(\bar{X})\)</span> is the
+selection factor for amino acid <span class="math inline">\(a\)</span>
+at site <span class="math inline">\(j\)</span> (learned by DASM)</li>
+<li><span class="math inline">\(t\)</span> is the branch length (jointly
+optimized during training)</li>
+</ul>
+<h3 id="neutral-mutation-model">Neutral Mutation Model</h3>
+<p>The neutral mutation probability uses a Poisson model. For a
+nucleotide site <span class="math inline">\(i\)</span>:</p>
+<ul>
+<li>Probability of mutation: <span class="math inline">\((1 -
+e^{-\lambda_i t}) \times s_{i,\beta}\)</span></li>
+<li>Probability of no mutation: <span
+class="math inline">\(e^{-\lambda_i t}\)</span></li>
+</ul>
+<p>where <span class="math inline">\(\lambda_i\)</span> is the
+site-specific mutation rate from the SHM model and <span
+class="math inline">\(s_{i,\beta}\)</span> is the substitution
+probability to nucleotide <span
+class="math inline">\(\beta\)</span>.</p>
+<p>For a codon (3 nucleotide sites), the probability of a specific codon
+change is the product of individual nucleotide probabilities.</p>
+<h2 id="why-linear">Why Linear?</h2>
+<h3 id="small-t-approximation">Small-<span
+class="math inline">\(t\)</span> Approximation</h3>
+<p>For small branch lengths, <span class="math inline">\(1 -
+e^{-\lambda_i t} \approx \lambda_i t\)</span>. Summing over all <span
+class="math inline">\(N\)</span> nucleotide sites:</p>
+<p><span class="math display">\[\mathbb{E}[\text{mutations}] \approx t
+\sum_{i=1}^{N} \lambda_i = t \cdot N \cdot \langle \lambda
+\rangle\]</span></p>
+<p>Therefore:</p>
+<p><span class="math display">\[f_{\text{mut}} =
+\frac{\mathbb{E}[\text{mutations}]}{N} \approx t \cdot \langle \lambda
+\rangle\]</span></p>
+<p>This predicts a linear relationship <span class="math inline">\(t
+\propto f_{\text{mut}}\)</span> with slope <span
+class="math inline">\(1/\langle \lambda \rangle\)</span>.</p>
+<h3 id="effect-of-selection">Effect of Selection</h3>
+<p>Selection factors <span class="math inline">\(f_{j,a} &lt; 1\)</span>
+on average (most mutations are deleterious). This reduces the
+probability of observing mutations:</p>
+<p><span class="math display">\[P(\text{mutation}) \propto t \cdot
+\lambda \cdot f\]</span></p>
+<p>To explain <span class="math inline">\(N\)</span> observed mutations
+when <span class="math inline">\(\langle f \rangle &lt; 1\)</span>, the
+model requires a longer branch length <span
+class="math inline">\(t\)</span> to compensate. The fitted slope of 1.76
+implies:</p>
+<p><span class="math display">\[\langle \lambda \rangle \cdot \langle f
+\rangle \approx \frac{1}{1.76} \approx 0.57\]</span></p>
+<p>This makes biological sense: observed mutations are approximately 57%
+as likely as neutral expectation due to purifying selection.</p>
+<h3 id="complexity-that-averages-out">Complexity That Averages Out</h3>
+<p>Despite the model’s complexity—site-specific rates <span
+class="math inline">\(\lambda_i\)</span>, codon table degeneracy,
+position-dependent selection, and products of nucleotide
+probabilities—the aggregate behavior is remarkably linear. This occurs
+because:</p>
+<ol type="1">
+<li><strong>Averaging over many sites</strong>: Each sequence has ~300+
+nucleotides, so variations in <span
+class="math inline">\(\lambda_i\)</span> average out</li>
+<li><strong>Consistent selection pressure</strong>: The average
+selection factor <span class="math inline">\(\langle f \rangle\)</span>
+doesn’t vary strongly with mutation count</li>
+<li><strong>Self-consistent optimization</strong>: DASM optimizes <span
+class="math inline">\(t\)</span> to maximize likelihood, which naturally
+scales with mutation count</li>
+</ol>
+<h2 id="results">Results</h2>
+<h3 id="data">Data</h3>
+<ul>
+<li><strong>Training set</strong>: 742,377 parent-child pairs from
+v1jaffeCC + v1tangCC datasets</li>
+<li><strong>Validation set</strong>: 138,256 pairs (held-out
+samples)</li>
+</ul>
+<h3 id="linear-regression">Linear Regression</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Slope</td>
+<td>1.7578</td>
+</tr>
+<tr class="even">
+<td>Intercept</td>
+<td>-0.0009</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(R^2\)</span></td>
+<td>0.9738</td>
+</tr>
+<tr class="even">
+<td>RMSE</td>
+<td>0.0065</td>
+</tr>
+</tbody>
+</table>
+<p>The near-zero intercept confirms the relationship passes through the
+origin as expected (zero mutations <span
+class="math inline">\(\Rightarrow\)</span> zero branch length).</p>
+<h3 id="residual-analysis">Residual Analysis</h3>
+<p>Residuals by mutation frequency decile show minimal systematic
+pattern:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Decile</th>
+<th>Mean Residual</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0 (lowest)</td>
+<td>+0.0007</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>+0.0007</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>+0.0007</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>+0.0006</td>
+</tr>
+<tr class="odd">
+<td>4</td>
+<td>+0.0002</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>-0.0001</td>
+</tr>
+<tr class="odd">
+<td>6</td>
+<td>-0.0005</td>
+</tr>
+<tr class="even">
+<td>7</td>
+<td>-0.0012</td>
+</tr>
+<tr class="odd">
+<td>8</td>
+<td>-0.0016</td>
+</tr>
+<tr class="even">
+<td>9 (highest)</td>
+<td>+0.0005</td>
+</tr>
+</tbody>
+</table>
+<p>The slight negative residuals at intermediate-high mutation
+frequencies may reflect saturation effects (multiple hits at the same
+site) not fully captured by the linear approximation.</p>
+<h2 id="figure">Figure</h2>
+<figure>
+<img src="branch_length_regression.png"
+alt="Mutation Frequency vs DASM Branch Length" />
+<figcaption aria-hidden="true">Mutation Frequency vs DASM Branch
+Length</figcaption>
+</figure>
+<p>The plot shows the relationship between raw mutation frequency
+(x-axis) and DASM-inferred branch length (y-axis) for 742,377 training
+pairs. Axes are trimmed to the 99th percentile for clarity. The red line
+shows the linear fit with <span class="math inline">\(R^2 =
+0.974\)</span>.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>The strong linear relationship between mutation frequency and DASM
+branch length provides a useful rule of thumb:</p>
+<p><span class="math display">\[t_{\text{DASM}} \approx 1.76 \times
+f_{\text{mut}}\]</span></p>
+<p>This relationship emerges from the model’s structure despite
+considerable underlying complexity, and reflects the combined effect of
+site-specific mutation rates and purifying selection operating on
+antibody sequences.</p>
+<hr />
+<h2 id="appendix-code">Appendix: Code</h2>
+<p>Full source: <code>docs/branch_length_regression.py</code></p>
+<h3 id="computing-mutation-frequency">Computing Mutation Frequency</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> mutation_frequency(parent_seq, child_seq):</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">&quot;&quot;&quot;Compute fraction of nucleotide sites that differ.&quot;&quot;&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    mismatches <span class="op">=</span> <span class="bu">sum</span>(<span class="dv">1</span> <span class="cf">for</span> p, c <span class="kw">in</span> <span class="bu">zip</span>(parent_seq, child_seq) <span class="cf">if</span> p <span class="op">!=</span> c)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> mismatches <span class="op">/</span> <span class="bu">len</span>(parent_seq)</span></code></pre></div>
+<h3 id="loading-and-matching-data">Loading and Matching Data</h3>
+<p>The DASM branch length CSVs contain only values (no identifiers),
+stored in the same row order as the training data. We use
+<code>train_val_df_of_multiname</code> to replicate the exact loading
+sequence:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> dnsmex.dxsm_data <span class="im">import</span> train_val_df_of_multiname</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Load PCPs with train/val split matching training</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>pcp_df <span class="op">=</span> train_val_df_of_multiname(<span class="st">&quot;v1jaffeCC+v1tangCC&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Load DASM branch lengths</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>train_bls <span class="op">=</span> pd.read_csv(<span class="ss">f&quot;</span><span class="sc">{</span>model_dir<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>model_name<span class="sc">}</span><span class="ss">.train_branch_lengths.csv&quot;</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>val_bls <span class="op">=</span> pd.read_csv(<span class="ss">f&quot;</span><span class="sc">{</span>model_dir<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span>model_name<span class="sc">}</span><span class="ss">.val_branch_lengths.csv&quot;</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Match by row order</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>train_df <span class="op">=</span> pcp_df[pcp_df[<span class="st">&quot;in_train&quot;</span>]].reset_index(drop<span class="op">=</span><span class="va">True</span>).copy()</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>train_df[<span class="st">&quot;dasm_branch_length&quot;</span>] <span class="op">=</span> train_bls[<span class="st">&quot;branch_length&quot;</span>].values</span></code></pre></div>
+<h3 id="linear-regression-1">Linear Regression</h3>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> scipy <span class="im">import</span> stats</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>result <span class="op">=</span> stats.linregress(df[<span class="st">&quot;mut_freq&quot;</span>], df[<span class="st">&quot;dasm_branch_length&quot;</span>])</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># result.slope = 1.7578</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co"># result.intercept = -0.0009</span></span></code></pre></div>
+<h3 id="residual-analysis-by-decile">Residual Analysis by Decile</h3>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>resid <span class="op">=</span> df[<span class="st">&quot;dasm_branch_length&quot;</span>] <span class="op">-</span> (result.slope <span class="op">*</span> df[<span class="st">&quot;mut_freq&quot;</span>] <span class="op">+</span> result.intercept)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>df[<span class="st">&quot;decile&quot;</span>] <span class="op">=</span> pd.qcut(df[<span class="st">&quot;mut_freq&quot;</span>], <span class="dv">10</span>, labels<span class="op">=</span><span class="va">False</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> decile <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">10</span>):</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    mask <span class="op">=</span> df[<span class="st">&quot;decile&quot;</span>] <span class="op">==</span> decile</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f&quot;Decile </span><span class="sc">{</span>decile<span class="sc">}</span><span class="ss">: mean residual = </span><span class="sc">{</span>resid[mask]<span class="sc">.</span>mean()<span class="sc">:+.6f}</span><span class="ss">&quot;</span>)</span></code></pre></div>
+</body>
+</html>
