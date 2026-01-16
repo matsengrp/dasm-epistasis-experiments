@@ -7,59 +7,95 @@ This module contains shared functions used by:
 """
 
 import pandas as pd
+import numpy as np
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+from scipy.odr import ODR, Model, RealData
 from netam.sequences import AA_STR_SORTED, CODONS, translate_codon
+
+from utils import sort_antibody_sites
+
+
+def orthogonal_regression(x, y):
+    """
+    Orthogonal/Deming regression - appropriate when both variables have measurement error.
+
+    When comparing two models that both have measurement error/uncertainty, OLS produces
+    attenuated slopes - biased toward 0. This is called "regression dilution" or
+    "attenuation bias." If the data truly lies along y=x but both x and y have independent
+    noise, OLS will give a slope < 1. The higher the noise, the more attenuation.
+
+    Orthogonal regression (also called Deming regression or total least squares) minimizes
+    perpendicular distances to the line, treating both variables as having error.
+
+    Parameters:
+    -----------
+    x : array-like
+        Independent variable values
+    y : array-like
+        Dependent variable values
+
+    Returns:
+    --------
+    tuple : (slope, intercept)
+        The slope and intercept of the orthogonal regression line
+    """
+    def linear(B, x):
+        return B[0] * x + B[1]
+
+    linear_model = Model(linear)
+    data = RealData(x, y)
+    odr = ODR(data, linear_model, beta0=[1., 0.])
+    output = odr.run()
+    return output.beta[0], output.beta[1]  # slope, intercept
 
 
 def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, site, vfamilies=['IGHV1', 'IGHV3', 'IGHV4'], branch_length_method='synonymous_mutation_freq_branch'):
     '''
     Calculate mutation rates at a specific site across different V gene families.
-    Mutation rates are calculated for codon
 
     This function analyzes mutation rates at a given site across different V families,
-    using branch length as a measure of evolutionary time.
+    using branch length as a measure of evolutionary time. Results are calculated at
+    three levels of granularity:
+    1. Per V-family (overall mutation rate)
+    2. Per amino acid substitution (parent_aa -> child_aa)
+    3. Per codon substitution (parent_codon -> child_codon, single mutations only)
 
     Parameters:
     -----------
     site_sub_probs_df_germline : pd.DataFrame
         DataFrame containing site substitution probabilities with columns:
         - 'site': site position
-        - 'sample_id': sample identifier
-        - 'family': family identifier
-        - 'pcp_index': phylogenetic branch identifier
-        - 'branch_length': evolutionary distance (substitutions per site)
+        - 'v_family': V gene family
         - 'germline_amino_acid': original amino acid at germline
-        - 'is_germline_aa': boolean indicating if current AA matches germline
-        - 'mutation': boolean indicating if site is mutated from germline
-        - 'mutations_per_branch': total mutations accumulated on this branch
+        - 'germline_codon': original codon at germline
+        - 'is_germline_codon': boolean indicating if parent codon matches germline
+        - 'parent_aa', 'child_aa': parent and child amino acids
+        - 'parent_codon', 'child_codon': parent and child codons
+        - 'nucleotide_mutation_count': number of nucleotide mutations
+        - branch_length_method column: branch length measure
+
+    site : str or int
+        Site position to analyze
 
     vfamilies : list
         List of V gene families to compare (default: ['IGHV1', 'IGHV3', 'IGHV4'])
-    site : int
-        Site position to analyze
+
+    branch_length_method : str
+        Column name to use for branch length calculation
 
     Returns:
     --------
-    list
-        List of dictionaries containing mutation rate data for each V family:
-        - 'vfamily': V gene family name
-        - 'site': site position
-        - 'branch_length': total branch length
-        - 'mutations_per_branch': total mutations per branch
-        - 'mutation_acquired': number of mutations acquired
-        - 'rate': mutations per unit branch length
-        - 'rate_mutcount': mutations per mutation count
-
-    Notes:
-    ------
-    - Only analyzes branches where the site has germline amino acid identity
-    - Handles cases with zero branch length or mutation count
-    - Calculates both branch-length normalized and mutation-count normalized rates
+    tuple of lists
+        (vfamily_results, vfamily_results_per_aa, vfamily_results_per_codon)
+        Each list contains dictionaries with mutation rate data.
     '''
     if branch_length_method not in ['synonymous_mutation_freq_branch', 'nonsynonymous_mutation_freq_branch', 'total_mutation_freq_branch']:
         raise ValueError("branch_length_method must be one of 'synonymous_mutation_freq_branch', 'nonsynonymous_mutation_freq_branch', or 'total_mutation_freq_branch'")
 
-    # filter only rows with the two relevant sites
+    # filter only rows with the relevant site and V families
     cur_df = site_sub_probs_df_germline[(site_sub_probs_df_germline['site'] == site) & (site_sub_probs_df_germline.v_family.isin(vfamilies))].copy()
 
     # filter only rows where germline identity is known
@@ -123,7 +159,7 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
                         'rate_mutcount': rate_aa_mutcount
                     })
 
-         # calculate codon specific rates
+        # calculate codon specific rates
         for codon in vfamily_df['germline_codon'].unique():
             codon_df = vfamily_df[vfamily_df['parent_codon'] == codon]
             codon_length_mutcount = codon_df[branch_length_method].sum()
@@ -246,3 +282,389 @@ def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs
         print("Warning: No per-codon results to save")
 
     return results_df, results_per_aa_df, results_per_codon_df
+
+
+def add_mutation_counts_per_branch_for_branch_length(df):
+    """
+    Add columns for synonymous and nonsynonymous nucleotide mutation frequencies
+    to use as alternative branch length measures.
+
+    This function calculates per-branch mutation counts and frequencies that can be used
+    as alternative branch length normalization methods when calculating mutation rates.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        DataFrame with columns:
+        - 'pcp_index': identifier for parent-child pairs
+        - 'parent_codon': parent codon sequence
+        - 'child_codon': child codon sequence
+        - 'parent_aa': parent amino acid
+        - 'child_aa': child amino acid
+
+    Returns:
+    --------
+    pd.DataFrame
+        Input DataFrame with additional columns:
+        - 'nucleotide_mutation_count': number of nucleotide differences per codon
+        - 'synonymous_mutation_freq_branch': synonymous mutations / sequence length
+        - 'nonsynonymous_mutation_freq_branch': nonsynonymous mutations / sequence length
+        - 'total_mutation_freq_branch': total mutations / sequence length
+
+    Notes:
+    ------
+    The mutation frequency columns provide alternative normalization methods:
+    - 'synonymous_mutation_freq_branch': Useful when comparing productive and non-productive
+      data, as synonymous mutations are under the same selection pressure in both.
+    - 'total_mutation_freq_branch': General-purpose normalization.
+    """
+    # Calculate nucleotide sequence length (number of codons * 3)
+    df['seq_nuc_length'] = df.groupby('pcp_index').transform('size') * 3
+
+    # Count nucleotide differences between parent and child codons
+    df['nucleotide_mutation_count'] = df.apply(
+        lambda row: sum(c1 != c2 for c1, c2 in zip(row['child_codon'], row['parent_codon'])),
+        axis=1
+    )
+
+    # Mark amino acid changes
+    df['mutation'] = df['parent_aa'] != df['child_aa']
+
+    # Separate synonymous and nonsynonymous nucleotide mutations
+    df['synonymous_nucleotide_mutation_count'] = np.where(
+        df['mutation'] == False,
+        df['nucleotide_mutation_count'],
+        0
+    )
+    df['nonsynonymous_nucleotide_mutation_count'] = np.where(
+        df['mutation'] == True,
+        df['nucleotide_mutation_count'],
+        0
+    )
+
+    # Sum mutations per branch (pcp_index)
+    df['synonymous_mutations_per_branch'] = df.groupby('pcp_index')['synonymous_nucleotide_mutation_count'].transform('sum')
+    df['nonsynonymous_mutations_per_branch'] = df.groupby('pcp_index')['nonsynonymous_nucleotide_mutation_count'].transform('sum')
+    df['total_mutations_per_branch'] = df['nonsynonymous_mutations_per_branch'] + df['synonymous_mutations_per_branch']
+
+    # Calculate mutation frequencies (mutations / sequence length)
+    df['synonymous_mutation_freq_branch'] = df['synonymous_mutations_per_branch'] / df['seq_nuc_length']
+    df['nonsynonymous_mutation_freq_branch'] = df['nonsynonymous_mutations_per_branch'] / df['seq_nuc_length']
+    df['total_mutation_freq_branch'] = df['total_mutations_per_branch'] / df['seq_nuc_length']
+
+    # Drop intermediate columns that are not needed downstream
+    df.drop(columns=[
+        'seq_nuc_length',
+        'mutation',
+        'synonymous_nucleotide_mutation_count',
+        'nonsynonymous_nucleotide_mutation_count',
+        'synonymous_mutations_per_branch',
+        'nonsynonymous_mutations_per_branch',
+        'total_mutations_per_branch',
+    ], inplace=True)
+
+    return df
+
+
+def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site_color_map,
+                                   savefig_prefix=None, title_extra='', figures_dir='figures/'):
+    """
+    Create a scatter plot comparing observed/expected rate ratios to DASM selection factors.
+
+    Shows both OLS (ordinary least squares) and orthogonal regression lines for comparison.
+    OLS can produce attenuated slopes when both variables have measurement error, while
+    orthogonal regression treats both variables as having error.
+
+    Parameters:
+    -----------
+    compare_dasm_rates : pd.DataFrame
+        DataFrame with columns:
+        - 'log_ratio': log(observed_counts / expected_counts)
+        - 'log_selection_factor': log of DASM selection factor
+        - 'site', 'v_family', 'parent_aa', 'child_aa': for merging with entrenched sites
+
+    entrenched_sites_aas : pd.DataFrame
+        DataFrame with columns: 'site', 'v_family', 'amino_acid', 'target_amino_acid'
+
+    site_color_map : dict
+        Dictionary mapping site names to colors for consistent plotting
+
+    savefig_prefix : str, optional
+        If provided, save figure with this prefix
+
+    title_extra : str, optional
+        Additional text to add to the plot title
+
+    figures_dir : str, optional
+        Directory to save figures (default: 'figures/')
+
+    Returns:
+    --------
+    None (displays plot and optionally saves to file)
+    """
+    # Calculate regression statistics
+    x = compare_dasm_rates['log_ratio']
+    y = compare_dasm_rates['log_selection_factor']
+
+    # Remove any NaN values for regression calculation
+    mask = ~(np.isnan(x) | np.isnan(y))
+    x_clean = x[mask]
+    y_clean = y[mask]
+
+    # Calculate OLS linear regression
+    slope_ols, intercept_ols, r_value, p_value, std_err = stats.linregress(x_clean, y_clean)
+    r_squared = r_value ** 2
+    n = len(x_clean)
+
+    # Calculate orthogonal regression
+    slope_ortho, intercept_ortho = orthogonal_regression(x_clean.values, y_clean.values)
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(7, 6))
+
+    # Plot regular points in grey
+    sns.scatterplot(data=compare_dasm_rates,
+                    x='log_ratio', y='log_selection_factor',
+                    color='grey', alpha=0.3, label='Other sites')
+
+    # Filter entrenched data
+    entrenched_compare_rates_dasm = pd.merge(
+        entrenched_sites_aas.rename(columns={'amino_acid': 'parent_aa', 'target_amino_acid': 'child_aa'}),
+        compare_dasm_rates,
+        on=['site', 'v_family', 'parent_aa', 'child_aa'],
+        how='inner'
+    )
+    print(f"Plotting {len(entrenched_compare_rates_dasm)} entrenched points")
+
+    # Print which points were not found in the compare_dasm_rates
+    not_found = pd.merge(
+        entrenched_sites_aas.rename(columns={'amino_acid': 'parent_aa', 'target_amino_acid': 'child_aa'}),
+        compare_dasm_rates,
+        on=['site', 'v_family', 'parent_aa', 'child_aa'],
+        how='outer',
+        indicator=True
+    )
+    not_found = not_found[not_found['_merge'] == 'left_only']
+    if len(not_found) > 0:
+        print("The following entrenched points were not found in the comparison data:")
+        print(not_found[['site', 'v_family', 'parent_aa', 'child_aa']])
+
+    # Plot entrenched points in color
+    entrenched_compare_rates_dasm['site'] = entrenched_compare_rates_dasm['site'].astype(str)
+    sns.scatterplot(data=entrenched_compare_rates_dasm,
+                    x='log_ratio', y='log_selection_factor',
+                    s=90, hue='site', style='v_family', palette=site_color_map)
+
+    # Add both regression lines
+    x_range = np.array([x_clean.min(), x_clean.max()])
+
+    # OLS regression line (dashed black)
+    y_ols = slope_ols * x_range + intercept_ols
+    ax.plot(x_range, y_ols, linestyle='--', color='black', linewidth=2, label='OLS')
+
+    # Orthogonal regression line (solid blue)
+    y_ortho = slope_ortho * x_range + intercept_ortho
+    ax.plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal')
+
+    ax.axvline(0, color='black', linestyle=':', linewidth=1)
+    ax.axhline(0, color='black', linestyle=':', linewidth=1)
+
+    # Add legend
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+
+    plt.xlabel('Observed Rate / Expected Rate (log)')
+    plt.ylabel('DASM Selection Factor (log)')
+
+    # Format the equations for the title
+    if intercept_ols >= 0:
+        equation_ols = f'OLS: y = {slope_ols:.3f}x + {intercept_ols:.3f}'
+    else:
+        equation_ols = f'OLS: y = {slope_ols:.3f}x - {abs(intercept_ols):.3f}'
+
+    if intercept_ortho >= 0:
+        equation_ortho = f'Orthogonal: y = {slope_ortho:.3f}x + {intercept_ortho:.3f}'
+    else:
+        equation_ortho = f'Orthogonal: y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
+
+    title = f'Comparison of Observed/Expected Counts Ratio vs DASM Selection Factor\n{equation_ols}, R² = {r_squared:.3f}\n{equation_ortho}\nn = {n} {title_extra}'
+    plt.title(title)
+
+    plt.tight_layout()
+    plt.show()
+
+    if savefig_prefix:
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.pdf', dpi=800)
+
+
+def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_color_map,
+                                  savefig_prefix=None, title_extra='', figures_dir='figures/'):
+    """
+    Create pairwise comparison plots of observed/expected count ratios across V families.
+
+    Shows both OLS and orthogonal regression lines for each subplot. Orthogonal regression
+    is appropriate when both variables have measurement error.
+
+    Parameters:
+    -----------
+    compare_dasm_rates : pd.DataFrame
+        DataFrame with columns:
+        - 'v_family', 'site', 'parent_aa', 'child_aa'
+        - 'observed_counts', 'expected_counts', 'log_ratio'
+
+    pairwise_df_dict : dict
+        Dictionary mapping comparison names (e.g., 'IGHV1_vs_IGHV3') to DataFrames
+        with entrenched site information
+
+    site_color_map : dict
+        Dictionary mapping site names to colors for consistent plotting
+
+    savefig_prefix : str, optional
+        If provided, save figure with this prefix
+
+    title_extra : str, optional
+        Additional text to add to the plot title
+
+    figures_dir : str, optional
+        Directory to save figures (default: 'figures/')
+
+    Returns:
+    --------
+    None (displays plot and optionally saves to file)
+    """
+    fig, axes = plt.subplots(2, 3, figsize=(18, 7))
+    fig.subplots_adjust(hspace=0.5, wspace=0.3, right=0.85, top=0.8)
+    axes = axes.flatten()
+    ax_i = 0
+
+    # Collect all unique sites across all subplots
+    all_sites = set()
+
+    plot_order = ['IGHV1_vs_IGHV3', 'IGHV1_vs_IGHV4', 'IGHV3_vs_IGHV4', 'within_IGHV1', 'within_IGHV3', 'within_IGHV4']
+
+    for cur_pair_name in plot_order:
+        cur_pairwise_df = pairwise_df_dict[cur_pair_name]
+        # Get entrenched sites
+        cur_pairwise_df = cur_pairwise_df[cur_pairwise_df.are_both_less_than_minus1 == True]
+
+        # Create pairwise log ratio dataframe
+        compare_dasm_rates1 = compare_dasm_rates[['v_family', 'site', 'parent_aa', 'child_aa', 'observed_counts', 'expected_counts', 'log_ratio']].copy()
+        compare_dasm_rates1 = compare_dasm_rates1.rename(columns={
+            'parent_aa': 'parent_aa_1_and_target_aa_2',
+            'child_aa': 'parent_aa_2_and_target_aa_1'
+        })
+
+        compare_dasm_rates2 = compare_dasm_rates[['v_family', 'site', 'parent_aa', 'child_aa', 'observed_counts', 'expected_counts', 'log_ratio']].copy()
+        compare_dasm_rates2 = compare_dasm_rates2.rename(columns={
+            'parent_aa': 'parent_aa_2_and_target_aa_1',
+            'child_aa': 'parent_aa_1_and_target_aa_2'
+        })
+
+        counts_pairwise = pd.merge(
+            compare_dasm_rates1, compare_dasm_rates2,
+            on=['site', 'parent_aa_1_and_target_aa_2', 'parent_aa_2_and_target_aa_1'],
+            suffixes=('_1', '_2')
+        )
+
+        # Merge with current entrenched sites according to DASM analysis
+        entrenched_merged_pairwise = pd.merge(
+            counts_pairwise, cur_pairwise_df,
+            on=['site', 'parent_aa_1_and_target_aa_2', 'parent_aa_2_and_target_aa_1', 'v_family_1', 'v_family_2'],
+            how='inner'
+        )
+
+        # Count how many points were not found in the merge
+        not_found = pd.merge(
+            cur_pairwise_df, counts_pairwise,
+            on=['site', 'parent_aa_1_and_target_aa_2', 'parent_aa_2_and_target_aa_1', 'v_family_1', 'v_family_2'],
+            how='outer',
+            indicator=True
+        )
+        not_found = not_found[not_found['_merge'] == 'left_only']
+
+        # Calculate regression statistics for this subplot
+        x_pairwise = counts_pairwise['log_ratio_1']
+        y_pairwise = counts_pairwise['log_ratio_2']
+        mask_pairwise = ~(np.isnan(x_pairwise) | np.isnan(y_pairwise))
+        x_clean_pw = x_pairwise[mask_pairwise]
+        y_clean_pw = y_pairwise[mask_pairwise]
+
+        if len(x_clean_pw) > 2:
+            # OLS regression
+            slope_ols, intercept_ols, r_value, _, _ = stats.linregress(x_clean_pw, y_clean_pw)
+            r_squared = r_value ** 2
+
+            # Orthogonal regression
+            slope_ortho, intercept_ortho = orthogonal_regression(x_clean_pw.values, y_clean_pw.values)
+
+            # Set subplot title with regression info
+            base_title = cur_pair_name.replace('_', ' ')
+            if len(not_found) > 0:
+                base_title += f"\n(missing {len(not_found)} entrenched site+aa pairs)"
+            axes[ax_i].set_title(f"{base_title}\nOLS slope={slope_ols:.2f}, Ortho slope={slope_ortho:.2f}, R²={r_squared:.2f}", fontsize=10)
+        else:
+            # Set subplot title without regression
+            if len(not_found) == 0:
+                axes[ax_i].set_title(f"{cur_pair_name.replace('_', ' ')}")
+            else:
+                axes[ax_i].set_title(f"{cur_pair_name.replace('_', ' ')}\n(missing {len(not_found)} entrenched site+aa pairs)", fontsize=12)
+
+        # Collect all unique sites
+        all_sites.update(entrenched_merged_pairwise['site'].unique())
+
+        # Plot
+        sns.scatterplot(counts_pairwise, x='log_ratio_1', y='log_ratio_2', color='grey',
+                       ax=axes[ax_i], alpha=0.3, label='Other sites')
+        sns.scatterplot(entrenched_merged_pairwise, x='log_ratio_1', y='log_ratio_2',
+                       hue='site', palette=site_color_map, ax=axes[ax_i], s=90)
+
+        # Add regression lines if we have enough data
+        if len(x_clean_pw) > 2:
+            x_range = np.array([x_clean_pw.min(), x_clean_pw.max()])
+
+            # OLS regression line (dashed black)
+            y_ols = slope_ols * x_range + intercept_ols
+            axes[ax_i].plot(x_range, y_ols, linestyle='--', color='black', linewidth=2, label='OLS')
+
+            # Orthogonal regression line (solid blue)
+            y_ortho = slope_ortho * x_range + intercept_ortho
+            axes[ax_i].plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal')
+
+        # Remove individual subplot legends
+        if axes[ax_i].get_legend():
+            axes[ax_i].get_legend().remove()
+
+        axes[ax_i].axvline(0, color='black', linestyle=':', linewidth=1)
+        axes[ax_i].axhline(0, color='black', linestyle=':', linewidth=1)
+        ax_i += 1
+
+    # Add title
+    fig.suptitle(f'Germline-divergent sites comparison of Observed/Expected Counts Ratios\n{title_extra}')
+
+    # Create legend handles for all unique sites
+    legend_handles = []
+    legend_labels = []
+
+    # Add "Other sites" first
+    legend_handles.append(plt.scatter([], [], color='grey', alpha=0.3))
+    legend_labels.append('Other sites')
+
+    # Add regression line legend entries
+    legend_handles.append(plt.Line2D([0], [0], color='black', linestyle='--', linewidth=2))
+    legend_labels.append('OLS')
+    legend_handles.append(plt.Line2D([0], [0], color='blue', linestyle='-', linewidth=2))
+    legend_labels.append('Orthogonal')
+
+    # Add all unique sites in sorted order
+    sorted_sites = sort_antibody_sites(list(all_sites))
+    for site in sorted_sites:
+        legend_handles.append(plt.scatter([], [], color=site_color_map[site], s=90))
+        legend_labels.append(site)
+
+    # Create unified legend on the right side
+    fig.legend(legend_handles, legend_labels, loc='center left', bbox_to_anchor=(0.87, 0.5),
+               frameon=True, title='Sites')
+
+    if savefig_prefix:
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.pdf', dpi=800)
+
+    fig.show()
