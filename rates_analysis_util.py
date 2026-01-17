@@ -328,16 +328,16 @@ def add_mutation_counts_per_branch_for_branch_length(df):
     )
 
     # Mark amino acid changes
-    df['mutation'] = df['parent_aa'] != df['child_aa']
+    df['aa_mutation'] = df['parent_aa'] != df['child_aa']
 
     # Separate synonymous and nonsynonymous nucleotide mutations
     df['synonymous_nucleotide_mutation_count'] = np.where(
-        df['mutation'] == False,
+        df['aa_mutation'] == False,
         df['nucleotide_mutation_count'],
         0
     )
     df['nonsynonymous_nucleotide_mutation_count'] = np.where(
-        df['mutation'] == True,
+        df['aa_mutation'] == True,
         df['nucleotide_mutation_count'],
         0
     )
@@ -355,7 +355,7 @@ def add_mutation_counts_per_branch_for_branch_length(df):
     # Drop intermediate columns that are not needed downstream
     df.drop(columns=[
         'seq_nuc_length',
-        'mutation',
+        'aa_mutation',
         'synonymous_nucleotide_mutation_count',
         'nonsynonymous_nucleotide_mutation_count',
         'synonymous_mutations_per_branch',
