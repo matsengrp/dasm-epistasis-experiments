@@ -2,6 +2,9 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 import os
+import glob
+
+import seaborn as sns
 
 from netam.sequences import translate_sequence, AA_STR_SORTED
 from netam.codon_table import single_mutant_aa_indices
@@ -703,3 +706,96 @@ def add_germline_information(
         )
 
     return site_df_with_germline
+
+
+def load_entrenched_sites(numbering_scheme='chothia', base_dir='_output/entrenchment_analysis'):
+    """
+    Load entrenched sites identified by DASM analysis.
+
+    Loads and combines entrenched sites from two categories:
+    - Within v-family entrenched sites (e.g., within_IGHV1.csv)
+    - Between v-family entrenched sites (e.g., IGHV1_vs_IGHV3.csv)
+
+    Parameters:
+    -----------
+    numbering_scheme : str
+        Either 'imgt' or 'chothia' (default: 'chothia')
+    base_dir : str
+        Base directory containing entrenchment analysis outputs
+        (default: '_output/entrenchment_analysis')
+
+    Returns:
+    --------
+    tuple of (entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map)
+        - entrenched_sites: DataFrame with unique (site, v_family) pairs
+        - entrenched_sites_aas: DataFrame with (site, v_family, amino_acid, target_amino_acid)
+        - pairwise_df_dict: Dict mapping comparison names to DataFrames
+          (e.g., 'IGHV1_vs_IGHV3', 'within_IGHV1')
+        - site_color_map: Dict mapping site names to colors for consistent plotting
+
+    Example:
+    --------
+    >>> entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map = load_entrenched_sites('chothia')
+    >>> print(f"Found {len(entrenched_sites)} entrenched site/v_family pairs")
+    """
+    data_dir = f'{base_dir}/{numbering_scheme}'
+
+    # Load entrenched sites from "within" and "vs" files separately
+    within_dfs = []
+    vs_dfs = []
+
+    within_files = glob.glob(f'{data_dir}/entrenched_aa_sites*within*.csv')
+    vs_files = glob.glob(f'{data_dir}/entrenched_aa_sites*vs*.csv')
+
+    for f in within_files:
+        df = pd.read_csv(f, dtype={'site': str})
+        within_dfs.append(df)
+    for f in vs_files:
+        df = pd.read_csv(f, dtype={'site': str})
+        vs_dfs.append(df)
+
+    within_dfs = pd.concat(within_dfs, ignore_index=True) if within_dfs else pd.DataFrame()
+    vs_dfs = pd.concat(vs_dfs, ignore_index=True) if vs_dfs else pd.DataFrame()
+
+    # Extract unique site/v_family pairs
+    within_sites = within_dfs[['site', 'v_family']].drop_duplicates() if not within_dfs.empty else pd.DataFrame(columns=['site', 'v_family'])
+    vs_sites = vs_dfs[['site', 'v_family']].drop_duplicates() if not vs_dfs.empty else pd.DataFrame(columns=['site', 'v_family'])
+
+    # Extract site/v_family/amino_acid/target_amino_acid combinations
+    within_sites_aas = within_dfs[['site', 'v_family', 'amino_acid', 'target_amino_acid']].drop_duplicates() if not within_dfs.empty else pd.DataFrame(columns=['site', 'v_family', 'amino_acid', 'target_amino_acid'])
+    vs_sites_aas = vs_dfs[['site', 'v_family', 'amino_acid', 'target_amino_acid']].drop_duplicates() if not vs_dfs.empty else pd.DataFrame(columns=['site', 'v_family', 'amino_acid', 'target_amino_acid'])
+
+    # Combine within and vs results
+    entrenched_sites = pd.concat([within_sites, vs_sites]).drop_duplicates()
+    entrenched_sites_aas = pd.concat([within_sites_aas, vs_sites_aas]).drop_duplicates()
+
+    # Convert site to categorical with proper antibody numbering order
+    if not entrenched_sites.empty:
+        entrenched_sites['site'] = pd.Categorical(
+            entrenched_sites['site'],
+            categories=sort_antibody_sites(entrenched_sites['site'].unique()),
+            ordered=True
+        )
+        entrenched_sites = entrenched_sites.sort_values(['site', 'v_family'])
+
+    if not entrenched_sites_aas.empty:
+        entrenched_sites_aas['site'] = pd.Categorical(
+            entrenched_sites_aas['site'],
+            categories=sort_antibody_sites(entrenched_sites_aas['site'].unique()),
+            ordered=True
+        )
+        entrenched_sites_aas = entrenched_sites_aas.sort_values(['site', 'v_family', 'amino_acid', 'target_amino_acid'])
+
+    # Load pairwise comparison files
+    pairwise_files = glob.glob(f'{data_dir}/comparison*vs*.csv') + glob.glob(f'{data_dir}/comparison*within*.csv')
+    pairwise_df_dict = {}
+    for f in pairwise_files:
+        key = f.split('/')[-1].replace('comparison_', '').replace('.csv', '')
+        pairwise_df_dict[key] = pd.read_csv(f, dtype={'site': str})
+
+    # Create consistent color palette for entrenched sites
+    all_entrenched_sites = sort_antibody_sites(entrenched_sites_aas['site'].unique()) if not entrenched_sites_aas.empty else []
+    full_palette = sns.color_palette("tab20") + sns.color_palette("tab20b")[:5]
+    site_color_map = {str(site): full_palette[i] for i, site in enumerate(all_entrenched_sites)}
+
+    return entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map
