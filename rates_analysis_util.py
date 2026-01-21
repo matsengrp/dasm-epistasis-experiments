@@ -52,7 +52,7 @@ def orthogonal_regression(x, y):
     return output.beta[0], output.beta[1]  # slope, intercept
 
 
-def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, site, vfamilies=['IGHV1', 'IGHV3', 'IGHV4'], branch_length_method='synonymous_mutation_freq_branch'):
+def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, site, vfamilies=['IGHV1', 'IGHV3', 'IGHV4'], branch_length_method='synonymous_mutation_freq_branch', pseudocount=0.5):
     '''
     Calculate mutation rates at a specific site across different V gene families.
 
@@ -86,11 +86,20 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
     branch_length_method : str
         Column name to use for branch length calculation
 
+    pseudocount : float
+        Pseudocount to add to mutation counts before calculating adjusted rates.
+        This is applied at the count level: adjusted_rate = (count + pseudocount) / branch_length.
+        Default is 0.5 (Laplace smoothing). Output includes both raw and adjusted values.
+
     Returns:
     --------
     tuple of lists
         (vfamily_results, vfamily_results_per_aa, vfamily_results_per_codon)
-        Each list contains dictionaries with mutation rate data.
+        Each list contains dictionaries with mutation rate data including:
+        - mutation_acquired: raw count
+        - mutation_acquired_adjusted: count + pseudocount
+        - rate_mutcount: raw rate (count / branch_length)
+        - rate_mutcount_adjusted: adjusted rate ((count + pseudocount) / branch_length)
     '''
     if branch_length_method not in ['synonymous_mutation_freq_branch', 'nonsynonymous_mutation_freq_branch', 'total_mutation_freq_branch']:
         raise ValueError("branch_length_method must be one of 'synonymous_mutation_freq_branch', 'nonsynonymous_mutation_freq_branch', or 'total_mutation_freq_branch'")
@@ -127,7 +136,9 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
             'site': site,
             'mutcount_length': length_mutcount,
             'mutation_acquired': mutation_acquired,
-            'rate_mutcount': rate_mutcount
+            'mutation_acquired_adjusted': mutation_acquired + pseudocount,
+            'rate_mutcount': rate_mutcount,
+            'rate_mutcount_adjusted': (mutation_acquired + pseudocount) / length_mutcount
         })
 
 
@@ -144,7 +155,6 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
                     aa_mutation_acquired = len(aa_df[(aa_df['nucleotide_mutation_count'] > 0) & (aa_df['child_aa'] == target_amino_acid)])
 
                     # Calculate mutation rates for the specific amino acid
-                    #rate_aa = aa_mutation_acquired / aa_length
                     rate_aa_mutcount = aa_mutation_acquired / aa_length_mutcount
 
                     vfamily_results_per_aa.append({
@@ -152,11 +162,11 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
                         'site': site,
                         'parent_aa': amino_acid,
                         'child_aa': target_amino_acid,
-                        #'branch_length': aa_length,
                         'mutcount_length': aa_length_mutcount,
                         'mutation_acquired': aa_mutation_acquired,
-                        #'rate': rate_aa,
-                        'rate_mutcount': rate_aa_mutcount
+                        'mutation_acquired_adjusted': aa_mutation_acquired + pseudocount,
+                        'rate_mutcount': rate_aa_mutcount,
+                        'rate_mutcount_adjusted': (aa_mutation_acquired + pseudocount) / aa_length_mutcount
                     })
 
         # calculate codon specific rates
@@ -173,7 +183,7 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
                         continue  # skip codons that are more than one mutation away
                     codon_mutation_acquired = len(codon_df[(codon_df['nucleotide_mutation_count'] > 0) & (codon_df['child_codon'] == target_codon)])
 
-                    # Calculate mutation rates for the specific amino acid
+                    # Calculate mutation rates for the specific codon
                     rate_codon_mutcount = codon_mutation_acquired / codon_length_mutcount
 
                     vfamily_results_per_codon.append({
@@ -185,7 +195,9 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
                         'child_aa': translate_codon(target_codon),
                         'mutcount_length': codon_length_mutcount,
                         'mutation_acquired': codon_mutation_acquired,
-                        'rate_mutcount': rate_codon_mutcount
+                        'mutation_acquired_adjusted': codon_mutation_acquired + pseudocount,
+                        'rate_mutcount': rate_codon_mutcount,
+                        'rate_mutcount_adjusted': (codon_mutation_acquired + pseudocount) / codon_length_mutcount
                     })
 
 
