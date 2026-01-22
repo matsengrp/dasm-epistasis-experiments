@@ -726,16 +726,18 @@ def load_entrenched_sites(numbering_scheme='chothia', base_dir='_output/entrench
 
     Returns:
     --------
-    tuple of (entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map)
+    tuple of (entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map, within_dfs, vs_dfs)
         - entrenched_sites: DataFrame with unique (site, v_family) pairs
         - entrenched_sites_aas: DataFrame with (site, v_family, amino_acid, target_amino_acid)
         - pairwise_df_dict: Dict mapping comparison names to DataFrames
           (e.g., 'IGHV1_vs_IGHV3', 'within_IGHV1')
         - site_color_map: Dict mapping site names to colors for consistent plotting
+        - within_dfs: DataFrame with all within-family entrenched sites
+        - vs_dfs: DataFrame with all between-family entrenched sites
 
     Example:
     --------
-    >>> entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map = load_entrenched_sites('chothia')
+    >>> entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map, within_dfs, vs_dfs = load_entrenched_sites('chothia')
     >>> print(f"Found {len(entrenched_sites)} entrenched site/v_family pairs")
     """
     data_dir = f'{base_dir}/{numbering_scheme}'
@@ -798,4 +800,4 @@ def load_entrenched_sites(numbering_scheme='chothia', base_dir='_output/entrench
     full_palette = sns.color_palette("tab20") + sns.color_palette("tab20b")[:5]
     site_color_map = {str(site): full_palette[i] for i, site in enumerate(all_entrenched_sites)}
 
-    return entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map
+    return entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map, within_dfs, vs_dfs
