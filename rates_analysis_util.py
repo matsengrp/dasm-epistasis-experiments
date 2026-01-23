@@ -383,9 +383,8 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     """
     Create a scatter plot comparing observed/expected rate ratios to DASM selection factors.
 
-    Shows both OLS (ordinary least squares) and orthogonal regression lines for comparison.
-    OLS can produce attenuated slopes when both variables have measurement error, while
-    orthogonal regression treats both variables as having error.
+    Uses orthogonal regression (appropriate when both variables have measurement error)
+    and reports Pearson correlation.
 
     Parameters:
     -----------
@@ -422,11 +421,10 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     mask = ~(np.isnan(x) | np.isnan(y))
     x_clean = x[mask]
     y_clean = y[mask]
-
-    # Calculate OLS linear regression
-    slope_ols, intercept_ols, r_value, p_value, std_err = stats.linregress(x_clean, y_clean)
-    r_squared = r_value ** 2
     n = len(x_clean)
+
+    # Calculate Pearson correlation
+    r_value, p_value = stats.pearsonr(x_clean, y_clean)
 
     # Calculate orthogonal regression
     slope_ortho, intercept_ortho = orthogonal_regression(x_clean.values, y_clean.values)
@@ -467,16 +465,10 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
                     x='log_ratio', y='log_selection_factor',
                     s=90, hue='site', style='v_family', palette=site_color_map)
 
-    # Add both regression lines
+    # Add orthogonal regression line
     x_range = np.array([x_clean.min(), x_clean.max()])
-
-    # OLS regression line (dashed black)
-    y_ols = slope_ols * x_range + intercept_ols
-    ax.plot(x_range, y_ols, linestyle='--', color='black', linewidth=2, label='OLS')
-
-    # Orthogonal regression line (solid blue)
     y_ortho = slope_ortho * x_range + intercept_ortho
-    ax.plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal')
+    ax.plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal regression')
 
     ax.axvline(0, color='black', linestyle=':', linewidth=1)
     ax.axhline(0, color='black', linestyle=':', linewidth=1)
@@ -487,18 +479,13 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     plt.xlabel('Observed Rate / Expected Rate (log)')
     plt.ylabel('DASM Selection Factor (log)')
 
-    # Format the equations for the title
-    if intercept_ols >= 0:
-        equation_ols = f'OLS: y = {slope_ols:.3f}x + {intercept_ols:.3f}'
-    else:
-        equation_ols = f'OLS: y = {slope_ols:.3f}x - {abs(intercept_ols):.3f}'
-
+    # Format the equation for the title
     if intercept_ortho >= 0:
-        equation_ortho = f'Orthogonal: y = {slope_ortho:.3f}x + {intercept_ortho:.3f}'
+        equation_ortho = f'y = {slope_ortho:.3f}x + {intercept_ortho:.3f}'
     else:
-        equation_ortho = f'Orthogonal: y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
+        equation_ortho = f'y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
 
-    title = f'Comparison of Observed/Expected Counts Ratio vs DASM Selection Factor\n{equation_ols}, R² = {r_squared:.3f}\n{equation_ortho}\nn = {n} {title_extra}'
+    title = f'Comparison of Observed/Expected Counts Ratio vs DASM Selection Factor\nOrthogonal: {equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
     plt.title(title)
 
     plt.tight_layout()
@@ -513,8 +500,8 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
     """
     Create pairwise comparison plots of observed/expected count ratios across V families.
 
-    Shows both OLS and orthogonal regression lines for each subplot. Orthogonal regression
-    is appropriate when both variables have measurement error.
+    Uses orthogonal regression (appropriate when both variables have measurement error)
+    and reports R² from Pearson correlation.
 
     Parameters:
     -----------
@@ -601,8 +588,8 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         y_clean_pw = y_pairwise[mask_pairwise]
 
         if len(x_clean_pw) > 2:
-            # OLS regression
-            slope_ols, intercept_ols, r_value, _, _ = stats.linregress(x_clean_pw, y_clean_pw)
+            # Pearson correlation for R²
+            r_value, _ = stats.pearsonr(x_clean_pw, y_clean_pw)
             r_squared = r_value ** 2
 
             # Orthogonal regression
@@ -612,7 +599,7 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
             base_title = cur_pair_name.replace('_', ' ')
             if len(not_found) > 0:
                 base_title += f"\n(missing {len(not_found)} entrenched site+aa pairs)"
-            axes[ax_i].set_title(f"{base_title}\nOLS slope={slope_ols:.2f}, Ortho slope={slope_ortho:.2f}, R²={r_squared:.2f}", fontsize=10)
+            axes[ax_i].set_title(f"{base_title}\nOrthogonal slope={slope_ortho:.2f}, R²={r_squared:.2f}", fontsize=10)
         else:
             # Set subplot title without regression
             if len(not_found) == 0:
@@ -629,15 +616,9 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         sns.scatterplot(entrenched_merged_pairwise, x='log_ratio_1', y='log_ratio_2',
                        hue='site', palette=site_color_map, ax=axes[ax_i], s=90)
 
-        # Add regression lines if we have enough data
+        # Add orthogonal regression line if we have enough data
         if len(x_clean_pw) > 2:
             x_range = np.array([x_clean_pw.min(), x_clean_pw.max()])
-
-            # OLS regression line (dashed black)
-            y_ols = slope_ols * x_range + intercept_ols
-            axes[ax_i].plot(x_range, y_ols, linestyle='--', color='black', linewidth=2, label='OLS')
-
-            # Orthogonal regression line (solid blue)
             y_ortho = slope_ortho * x_range + intercept_ortho
             axes[ax_i].plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal')
 
