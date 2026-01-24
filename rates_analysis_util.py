@@ -204,7 +204,7 @@ def compare_mutation_rates_on_different_vfamilies(site_sub_probs_df_germline, si
     return vfamily_results, vfamily_results_per_aa, vfamily_results_per_codon
 
 
-def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs_df_germline, output_path, branch_length_method='synonymous_mutation_freq_branch', remove_leaves=True, pcp_df=None):
+def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs_df_germline, output_path, branch_length_method='synonymous_mutation_freq_branch', remove_leaves=True, pcp_df=None, pseudocount=0.5):
     """
     Calculate mutation rates for all sites across different V gene families.
 
@@ -214,6 +214,7 @@ def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs
         branch_length_method (str): Method to use for branch length calculation
         remove_leaves (bool): Whether to remove leaf nodes from the analysis (default: True)
         pcp_df (pd.DataFrame): Parent-child pair DataFrame with 'child_is_leaf' column (required if remove_leaves=True)
+        pseudocount (float): Pseudocount to add to mutation counts (default: 0.5)
 
     Returns:
         tuple: (results_df, results_per_aa_df) - DataFrames with results for overall and per-AA analysis
@@ -249,7 +250,7 @@ def compare_mutation_rates_on_different_backgrounds_for_all_sites(site_sub_probs
             print(f"Processing site {i+1}/{len(site_list)}: site {site}")
 
         vfamily_results, vfamily_results_per_aa, vfamily_results_per_codon = compare_mutation_rates_on_different_vfamilies(
-            site_sub_probs_df_germline, site, branch_length_method=branch_length_method
+            site_sub_probs_df_germline, site, branch_length_method=branch_length_method, pseudocount=pseudocount
         )
 
         # Extend the lists with results from this site
@@ -430,7 +431,7 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     slope_ortho, intercept_ortho = orthogonal_regression(x_clean.values, y_clean.values)
 
     # Create the plot
-    fig, ax = plt.subplots(figsize=(7, 6))
+    fig, ax = plt.subplots(figsize=(8, 6))
 
     # Plot regular points in grey
     sns.scatterplot(data=compare_dasm_rates,
@@ -485,14 +486,14 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     else:
         equation_ortho = f'y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
 
-    title = f'Comparison of Observed/Expected Counts Ratio vs DASM Selection Factor\nOrthogonal: {equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
+    title = f'Comparison of Observed/Expected Counts Ratio vs DASM Selection Factor\nOrthogonal regression: {equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
     plt.title(title)
 
     plt.tight_layout()
     plt.show()
 
     if savefig_prefix:
-        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.pdf', dpi=800)
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.png', dpi=300, bbox_inches='tight')
 
 
 def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_color_map,
