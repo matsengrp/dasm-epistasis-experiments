@@ -565,6 +565,22 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
             suffixes=('_1', '_2')
         )
 
+        # Filter counts_pairwise by the v_families being compared
+        if cur_pair_name.startswith('within_'):
+            # Within family comparison - both v_families should be the same
+            v_fam = cur_pair_name.replace('within_', '')
+            counts_pairwise = counts_pairwise[
+                (counts_pairwise['v_family_1'] == v_fam) &
+                (counts_pairwise['v_family_2'] == v_fam)
+            ]
+        else:
+            # Between family comparison (e.g., IGHV1_vs_IGHV3)
+            v_fam1, v_fam2 = cur_pair_name.split('_vs_')
+            counts_pairwise = counts_pairwise[
+                (counts_pairwise['v_family_1'] == v_fam1) &
+                (counts_pairwise['v_family_2'] == v_fam2)
+            ]
+
         # Merge with current entrenched sites according to DASM analysis
         entrenched_merged_pairwise = pd.merge(
             counts_pairwise, cur_pairwise_df,
