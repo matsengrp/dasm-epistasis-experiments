@@ -544,7 +544,7 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
     for cur_pair_name in plot_order:
         cur_pairwise_df = pairwise_df_dict[cur_pair_name]
         # Get entrenched sites
-        cur_pairwise_df = cur_pairwise_df[cur_pairwise_df.are_both_less_than_minus1 == True]
+        cur_pairwise_df = cur_pairwise_df[cur_pairwise_df.is_entrenched == True]
 
         # Create pairwise log ratio dataframe
         compare_dasm_rates1 = compare_dasm_rates[['v_family', 'site', 'parent_aa', 'child_aa', 'observed_counts', 'expected_counts', 'log_ratio']].copy()
