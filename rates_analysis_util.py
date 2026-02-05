@@ -380,7 +380,8 @@ def add_mutation_counts_per_branch_for_branch_length(df):
 
 
 def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site_color_map,
-                                   savefig_prefix=None, title_extra='', figures_dir='figures/'):
+                                   savefig_prefix=None, title="Comparison of Observed/Expected Rates Ratio vs DASM Selection Factor", 
+                                   title_extra='', figures_dir='figures/'):
     """
     Create a scatter plot comparing observed/expected rate ratios to DASM selection factors.
 
@@ -486,7 +487,7 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     else:
         equation_ortho = f'y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
 
-    title = f'Comparison of Observed/Expected Counts Ratio vs DASM Selection Factor\nOrthogonal regression: {equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
+    title = f'{title}\nOrthogonal regression: {equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
     plt.title(title)
 
     plt.tight_layout()
@@ -597,32 +598,12 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         )
         not_found = not_found[not_found['_merge'] == 'left_only']
 
-        # Calculate regression statistics for this subplot
-        x_pairwise = counts_pairwise['log_ratio_1']
-        y_pairwise = counts_pairwise['log_ratio_2']
-        mask_pairwise = ~(np.isnan(x_pairwise) | np.isnan(y_pairwise))
-        x_clean_pw = x_pairwise[mask_pairwise]
-        y_clean_pw = y_pairwise[mask_pairwise]
-
-        if len(x_clean_pw) > 2:
-            # Pearson correlation for R²
-            r_value, _ = stats.pearsonr(x_clean_pw, y_clean_pw)
-            r_squared = r_value ** 2
-
-            # Orthogonal regression
-            slope_ortho, intercept_ortho = orthogonal_regression(x_clean_pw.values, y_clean_pw.values)
-
-            # Set subplot title with regression info
-            base_title = cur_pair_name.replace('_', ' ')
-            if len(not_found) > 0:
-                base_title += f"\n(missing {len(not_found)} entrenched site+aa pairs)"
-            axes[ax_i].set_title(f"{base_title}\nOrthogonal slope={slope_ortho:.2f}, R²={r_squared:.2f}", fontsize=10)
-        else:
-            # Set subplot title without regression
-            if len(not_found) == 0:
-                axes[ax_i].set_title(f"{cur_pair_name.replace('_', ' ')}")
-            else:
-                axes[ax_i].set_title(f"{cur_pair_name.replace('_', ' ')}\n(missing {len(not_found)} entrenched site+aa pairs)", fontsize=12)
+        # Set subplot title
+        base_title = cur_pair_name.replace('_', ' ')
+        n_plotted = len(entrenched_merged_pairwise)
+        n_total = len(cur_pairwise_df)
+        base_title += f"\n(plotting {n_plotted} out of {n_total} entrenched site+aa pairs)"
+        axes[ax_i].set_title(base_title, fontsize=10)
 
         # Collect all unique sites
         all_sites.update(entrenched_merged_pairwise['site'].unique())
@@ -633,11 +614,10 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         sns.scatterplot(entrenched_merged_pairwise, x='log_ratio_1', y='log_ratio_2',
                        hue='site', palette=site_color_map, ax=axes[ax_i], s=90)
 
-        # Add orthogonal regression line if we have enough data
-        if len(x_clean_pw) > 2:
-            x_range = np.array([x_clean_pw.min(), x_clean_pw.max()])
-            y_ortho = slope_ortho * x_range + intercept_ortho
-            axes[ax_i].plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal')
+        # Add y=x dashed line
+        ax_min = min(counts_pairwise['log_ratio_1'].min(), counts_pairwise['log_ratio_2'].min())
+        ax_max = max(counts_pairwise['log_ratio_1'].max(), counts_pairwise['log_ratio_2'].max())
+        axes[ax_i].plot([ax_min, ax_max], [ax_min, ax_max], linestyle='--', color='black', linewidth=1, label='y=x')
 
         # Remove individual subplot legends
         if axes[ax_i].get_legend():
@@ -658,11 +638,9 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
     legend_handles.append(plt.scatter([], [], color='grey', alpha=0.3))
     legend_labels.append('Other sites')
 
-    # Add regression line legend entries
-    legend_handles.append(plt.Line2D([0], [0], color='black', linestyle='--', linewidth=2))
-    legend_labels.append('OLS')
-    legend_handles.append(plt.Line2D([0], [0], color='blue', linestyle='-', linewidth=2))
-    legend_labels.append('Orthogonal')
+    # Add y=x line legend entry
+    legend_handles.append(plt.Line2D([0], [0], color='black', linestyle='--', linewidth=1))
+    legend_labels.append('y=x')
 
     # Add all unique sites in sorted order
     sorted_sites = sort_antibody_sites(list(all_sites))
