@@ -156,7 +156,8 @@ def plot_entrenched_rsa_comparison(
             color='black',
             s=70,
             alpha=0.9,
-            ax=axes[i]
+            ax=axes[i],
+            legend=False
         )
 
         # Plot highlighted points on top
@@ -168,16 +169,16 @@ def plot_entrenched_rsa_comparison(
             s=70,
             alpha=0.9,
             ax=axes[i],
-            palette=palette_aa
+            palette=palette_aa,
+            legend=False
         )
 
         axes[i].set_title(f'{gene_type}')
         axes[i].tick_params(axis='x', rotation=90)
-        axes[i].legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
         axes[i].grid()
         add_cdr_shading(axes[i], global_sorted_sites, numbering_scheme=numbering_scheme)
 
-    # Create shared legend
+    # Create single shared legend
     if palette_aa:
         handles = [
             plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=palette_aa[aa], markersize=8)
@@ -185,7 +186,7 @@ def plot_entrenched_rsa_comparison(
         ]
         labels = sorted(palette_aa.keys())
         fig.legend(handles, labels, bbox_to_anchor=(1.02, 0.5), loc='center left',
-                   borderaxespad=0., title='Amino Acid')
+                   borderaxespad=0., title='Amino Acid', fontsize=12, title_fontsize=14)
 
     plt.tight_layout()
 
@@ -299,23 +300,27 @@ def plot_single_vfamily_rsa_comparison(
     axes[-1].set_xlabel(f'Site {numbering_scheme}', fontsize=16)
 
     # Create shared legend with larger markers and font
-    # Add "not entrenched" hollow circle first
+    # Title "Entrenched" with amino acid entries first
     handles = [
-        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='none',
-                   markeredgecolor='black', markeredgewidth=1, markersize=12)
-    ]
-    labels = ['Not entrenched']
-
-    # Add amino acid entries
-    handles += [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=palette_aa[aa],
                    markeredgecolor='black', markeredgewidth=0.5, markersize=12)
         for aa in sorted(palette_aa.keys())
     ]
-    labels += sorted(palette_aa.keys())
+    labels = list(sorted(palette_aa.keys()))
+
+    # Add blank spacer line
+    handles.append(plt.Line2D([0], [0], marker='', color='w', linestyle=''))
+    labels.append('')
+
+    # Add "not entrenched" hollow circle
+    handles.append(
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='none',
+                   markeredgecolor='black', markeredgewidth=1, markersize=12)
+    )
+    labels.append('Not entrenched')
 
     fig.legend(handles, labels, bbox_to_anchor=(1.02, 0.5), loc='center left',
-               borderaxespad=0., title='Legend', fontsize=12, title_fontsize=14)
+               borderaxespad=0., title='Entrenched', fontsize=12, title_fontsize=14)
 
     plt.tight_layout()
 
@@ -418,23 +423,27 @@ def plot_single_vfamily_rsa_complex_only(
     add_cdr_shading(ax, sorted_sites, numbering_scheme=numbering_scheme)
 
     # Create legend with larger markers and font
-    # Add "not entrenched" hollow circle first
+    # Title "Entrenched" with amino acid entries first
     handles = [
-        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='none',
-                   markeredgecolor='black', markeredgewidth=1, markersize=12)
-    ]
-    labels = ['Not entrenched']
-
-    # Add amino acid entries
-    handles += [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=palette_aa[aa],
                    markeredgecolor='black', markeredgewidth=0.5, markersize=12)
         for aa in sorted(palette_aa.keys())
     ]
-    labels += sorted(palette_aa.keys())
+    labels = list(sorted(palette_aa.keys()))
+
+    # Add blank spacer line
+    handles.append(plt.Line2D([0], [0], marker='', color='w', linestyle=''))
+    labels.append('')
+
+    # Add "not entrenched" hollow circle
+    handles.append(
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='none',
+                   markeredgecolor='black', markeredgewidth=1, markersize=12)
+    )
+    labels.append('Not entrenched')
 
     fig.legend(handles, labels, bbox_to_anchor=(1.02, 0.5), loc='center left',
-               borderaxespad=0., title='Legend', fontsize=12, title_fontsize=14)
+               borderaxespad=0., title='Entrenched', fontsize=12, title_fontsize=14)
 
     plt.tight_layout()
 
@@ -636,20 +645,20 @@ def examine_site(
     ax[3].tick_params(labelsize=TICK_SIZE)
     ax[3].grid(True, axis='y', alpha=0.3, linestyle='-')
 
-    # Bottom-middle: Burial by antigen (now positive = more buried)
+    # Bottom-middle: Δ RSA Antigen (now positive = more buried)
     sns.boxplot(cur_df, x='amino_acid', y='burial_by_antigen', showfliers=False,
                 hue='amino_acid', palette=palette_aa, ax=ax[4], whis=[5, 95])
-    ax[4].set_title('Burial by antigen', fontsize=TITLE_SIZE)
+    ax[4].set_title('Δ RSA Antigen', fontsize=TITLE_SIZE)
     ax[4].set_xlabel('Amino acid', fontsize=LABEL_SIZE)
     ax[4].set_ylabel('')
     ax[4].tick_params(labelsize=TICK_SIZE)
     ax[4].tick_params(labelleft=False)
     ax[4].grid(True, axis='y', alpha=0.3, linestyle='-')
 
-    # Bottom-right: Burial by light chain (now positive = more buried)
+    # Bottom-right: Δ RSA Light Chain (now positive = more buried)
     sns.boxplot(cur_df, x='amino_acid', y='burial_by_light_chain', showfliers=False,
                 hue='amino_acid', palette=palette_aa, ax=ax[5], whis=[5, 95])
-    ax[5].set_title('Burial by light chain', fontsize=TITLE_SIZE)
+    ax[5].set_title('Δ RSA Light Chain', fontsize=TITLE_SIZE)
     ax[5].set_xlabel('Amino acid', fontsize=LABEL_SIZE)
     ax[5].set_ylabel('')
     ax[5].tick_params(labelsize=TICK_SIZE)
@@ -691,15 +700,15 @@ def examine_site(
             palette={True: '#262626', False: '#D4D2D2'},
             ax=ax[1],
             legend=False,
-            s=50,
+            s=40,
             alpha=0.7,
             edgecolor='black',
             linewidth=0.5
         )
         ax[1].set_xlim(-4, 1)
         ax[1].set_ylim(-4, 1)
-        ax[1].axhline(0, color='black', linestyle='--', linewidth=1, alpha=0.5)
-        ax[1].axvline(0, color='black', linestyle='--', linewidth=1, alpha=0.5)
+        ax[1].axhline(0, color='black', linestyle='--', linewidth=1, alpha=0.3)
+        ax[1].axvline(0, color='black', linestyle='--', linewidth=1, alpha=0.3)
         ax[1].axline((0, 0), slope=1, linestyle='--', color='red', alpha=0.3)
         ax[1].set_title('Degree of entrenchment', fontsize=TITLE_SIZE)
         ax[1].set_xlabel('Forward selection (A→B)', fontsize=LABEL_SIZE)
