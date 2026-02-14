@@ -297,7 +297,7 @@ def plot_single_vfamily_rsa_comparison(
         axes[i].grid(True)
         add_cdr_shading(axes[i], sorted_sites, numbering_scheme=numbering_scheme)
 
-    axes[-1].set_xlabel(f'Site {numbering_scheme}', fontsize=16)
+    axes[-1].set_xlabel('Site', fontsize=16)
 
     # Create shared legend with larger markers and font
     # Title "Entrenched" with amino acid entries first
@@ -417,7 +417,7 @@ def plot_single_vfamily_rsa_complex_only(
     ax.set_xticks(range(len(sorted_sites)))
     ax.set_xticklabels(sorted_sites)
     ax.set_ylabel('RSA (Heavy + Light + Antigen)', fontsize=16)
-    ax.set_xlabel(f'Site {numbering_scheme}', fontsize=16)
+    ax.set_xlabel('Site', fontsize=16)
     ax.tick_params(axis='x', rotation=90, labelsize=14)
     ax.grid(True)
     add_cdr_shading(ax, sorted_sites, numbering_scheme=numbering_scheme)
