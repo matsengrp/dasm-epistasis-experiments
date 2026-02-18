@@ -701,7 +701,7 @@ def examine_site(
             ax=ax[1],
             legend=False,
             s=40,
-            alpha=0.7,
+            alpha=0.85,
             edgecolor='black',
             linewidth=0.5
         )
@@ -758,7 +758,8 @@ def plot_ramachandran_by_site_range(
     v_families=None,
     site_range=5,
     save_fig=False,
-    output_dir='figures'
+    output_dir='figures',
+    germline_filter=None,
 ):
     """
     Create Ramachandran plots for a range of sites centered around center_site.
@@ -766,7 +767,7 @@ def plot_ramachandran_by_site_range(
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame containing angle data with columns: v_family_heavy, site, amino_acid, phi, psi, is_germline
+        DataFrame containing angle data with columns: v_family_heavy, site, amino_acid, phi, psi, is_germline, pdb_id
     center_site : int or str
         Center site number
     palette_aa : dict, optional
@@ -779,6 +780,13 @@ def plot_ramachandran_by_site_range(
         Whether to save the figure
     output_dir : str
         Directory for saving figures
+    germline_filter : list of tuples, optional
+        Filter sequences by germline amino acid at a specific site.
+        Each tuple is (v_family, site, amino_acid), e.g.:
+        [('IGHV1', '9', 'A'), ('IGHV3', '9', 'G')]
+        Only pdb_ids that match at least one filter condition (having the
+        specified germline amino acid at the given site for that v_family)
+        are included. Plots still only show germline residues.
 
     Returns
     -------
@@ -786,6 +794,19 @@ def plot_ramachandran_by_site_range(
     """
     if v_families is None:
         v_families = ['IGHV1', 'IGHV3']
+
+    # Apply germline_filter: keep only pdb_ids matching at least one condition
+    if germline_filter is not None:
+        matching_pdb_ids = set()
+        for v_family, filter_site, filter_aa in germline_filter:
+            mask = (
+                (df.v_family_heavy == v_family) &
+                (df.site == str(filter_site)) &
+                (df.amino_acid == filter_aa) &
+                (df.is_germline == True)
+            )
+            matching_pdb_ids.update(df.loc[mask, 'pdb_id'].unique())
+        df = df[df.pdb_id.isin(matching_pdb_ids)]
 
     # Prepare site range
     center_site_int = int(center_site)
@@ -827,7 +848,7 @@ def plot_ramachandran_by_site_range(
                         color = palette_aa.get(aa, 'gray')
                         scatter = ax.scatter(
                             aa_data.phi, aa_data.psi,
-                            alpha=0.3, s=50,
+                            alpha=0.4, s=50,
                             color=color, edgecolor='black', linewidth=0.5
                         )
 
@@ -862,7 +883,7 @@ def plot_ramachandran_by_site_range(
     plt.tight_layout()
 
     if legend_handles:
-        fig.legend(
+        leg = fig.legend(
             legend_handles, legend_labels,
             loc='lower center',
             bbox_to_anchor=(0.5, -0.05),
@@ -871,6 +892,8 @@ def plot_ramachandran_by_site_range(
             frameon=True,
             title='Amino Acid'
         )
+        for handle in leg.legend_handles:
+            handle.set_alpha(1.0)
         plt.subplots_adjust(bottom=0.1)
 
     if save_fig:
