@@ -755,7 +755,7 @@ def plot_ramachandran_by_site_range(
     df,
     center_site,
     palette_aa=None,
-    v_families=None,
+    v_families=['IGHV1', 'IGHV3'],
     site_range=5,
     save_fig=False,
     output_dir='figures',
@@ -792,8 +792,6 @@ def plot_ramachandran_by_site_range(
     -------
     fig, axes : matplotlib figure and axes
     """
-    if v_families is None:
-        v_families = ['IGHV1', 'IGHV3']
 
     # Apply germline_filter: keep only pdb_ids matching at least one condition
     if germline_filter is not None:
