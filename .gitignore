@@ -177,4 +177,4 @@ cython_debug/
 _ignore/
 _output/
 figures/
-germline/ighv_tree*
+germline/ogrdb_human_*
