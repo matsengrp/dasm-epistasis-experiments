@@ -9,8 +9,9 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-sys.path.insert(0, os.path.expanduser("~/re/dasm-experiments"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dnsmex.dxsm_data import train_val_df_of_multiname
+from dnsmex.local import localify
 
 
 def mutation_frequency(parent_seq, child_seq):
@@ -30,7 +31,7 @@ def load_data():
         for p, c in zip(pcp_df["parent_heavy"], pcp_df["child_heavy"])
     ]
 
-    model_dir = os.path.expanduser("~/re/dasm-experiments/dasm-train/trained_models")
+    model_dir = localify("DASM_TRAINED_MODELS_DIR")
     model_name = "dasm_1m-v1jaffeCC+v1tangCC-joint"
 
     train_bls = pd.read_csv(f"{model_dir}/{model_name}.train_branch_lengths.csv")
@@ -110,7 +111,7 @@ def main():
     plt.colorbar(ax.collections[0], ax=ax, label='Count')
 
     plt.tight_layout()
-    output_path = os.path.expanduser("~/re/dasm-experiments/docs/branch_length_regression.png")
+    output_path = os.path.join(os.path.dirname(__file__), "branch_length_regression.png")
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     print(f"\nSaved to {output_path}")
 

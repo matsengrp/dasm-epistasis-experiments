@@ -34,15 +34,12 @@ Output files:
 """
 
 import os
-import sys
 import pandas as pd
 import requests
 from Bio import SeqIO
 import subprocess
 from collections import Counter
 
-# Add parent directory to path to import from dnsmex
-sys.path.insert(0, '/home/nharel/re/dnsm-experiments-1')
 from netam.sequences import translate_sequence
 
 
