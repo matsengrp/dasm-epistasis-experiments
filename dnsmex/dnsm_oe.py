@@ -143,7 +143,7 @@ class OEPlotter(dxsm_oe.OEPlotter):
 
         plotter.pcp_df = plotter.pcp_df[plotter.pcp_df["v_family"] == v_family]
 
-        # Create a new vaildation burrito with the subset dataset
+        # Create a new validation burrito with the subset dataset
         ingroup_pcp_indices = list(plotter.pcp_df.index)
         subset_val_dataset = plotter.val_burrito.val_dataset.subset_via_indices(
             ingroup_pcp_indices
