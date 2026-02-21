@@ -178,3 +178,4 @@ _ignore/
 _output/
 figures/
 germline/ogrdb_human_*
+dnsmex/local_config.py

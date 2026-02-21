@@ -11,6 +11,11 @@ from netam.codon_table import single_mutant_aa_indices
 
 from Bio.Data import CodonTable
 
+import dnsmex
+assert getattr(dnsmex, '__source__', None) == "dasm-epistasis-experiments", (
+    "Importing the wrong dnsmex! Run: pip uninstall dnsmex"
+)
+
 from dnsmex.local import localify
 from dnsmex import dasm_oe, dnsm_oe, dasm_zoo, dnsm_zoo
 
