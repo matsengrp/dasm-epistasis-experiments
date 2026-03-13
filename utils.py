@@ -21,6 +21,13 @@ from dnsmex import dasm_oe, dnsm_oe, dasm_zoo, dnsm_zoo
 
 GERMLINE_PATH_DICTIONARY = {'imgt':'germline/germline_codons_imgt.csv', 'chothia':'germline/germline_codons_chothia.csv'}
 
+# Consistent colors for all entrenched sites (tab20 palette).
+# Odd indices first then even to avoid similar adjacent pairs.
+_TAB20 = sns.color_palette("tab20", 20)
+_ENTRENCHED_PALETTE = [_TAB20[i] for i in range(0, 20, 2) if i not in (14,)] + [_TAB20[i] for i in range(1, 20, 2) if i not in (15,)]
+_ENTRENCHED_SITE_ORDER = ["33", "35", "50", "52", "53", "10", "9", "16", "29", "37", "67", "73", "94", "17", "18"]
+ENTRENCHED_SITE_COLORS = {site: _ENTRENCHED_PALETTE[i] for i, site in enumerate(_ENTRENCHED_SITE_ORDER)}
+
 
 def get_cdr_definitions(numbering_scheme='imgt', chain='heavy'):
     """
@@ -800,9 +807,7 @@ def load_entrenched_sites(numbering_scheme='chothia', base_dir='_output/entrench
         key = f.split('/')[-1].replace('comparison_', '').replace('.csv', '')
         pairwise_df_dict[key] = pd.read_csv(f, dtype={'site': str})
 
-    # Create consistent color palette for entrenched sites
-    all_entrenched_sites = sort_antibody_sites(entrenched_sites_aas['site'].unique()) if not entrenched_sites_aas.empty else []
-    full_palette = sns.color_palette("tab20") + sns.color_palette("tab20b")[:5]
-    site_color_map = {str(site): full_palette[i] for i, site in enumerate(all_entrenched_sites)}
+    # Use the global ENTRENCHED_SITE_COLORS palette
+    site_color_map = ENTRENCHED_SITE_COLORS
 
     return entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map, within_dfs, vs_dfs

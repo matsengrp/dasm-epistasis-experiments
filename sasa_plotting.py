@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.gridspec import GridSpec
 
-from utils import sort_antibody_sites, add_cdr_shading
+from utils import sort_antibody_sites, add_cdr_shading, ENTRENCHED_SITE_COLORS
 
 
 def plot_rsa_by_vfamily(
@@ -65,6 +65,7 @@ def plot_rsa_by_vfamily(
             showfliers=False,
             ax=axes[i],
             hue=hue_col,
+            whis=[5, 95],
             order=sorted_sites,
         )
 
@@ -1128,3 +1129,258 @@ def plot_ramachandran_by_site_range(
         )
 
     return fig, axes
+
+
+def _prepare_entrenchment_data(df, v_family, entrenched_site_set, germline_only, entrenched_site_colors):
+    """Shared data preparation for entrenchment boxplot functions."""
+    if entrenched_site_colors is None:
+        entrenched_site_colors = ENTRENCHED_SITE_COLORS
+
+    entrenched_for_vfam = {str(s) for s in entrenched_site_set}
+
+    filtered = df[df.v_family_heavy == v_family].copy()
+    if germline_only:
+        filtered = filtered[filtered.is_germline == True].copy()
+
+    sorted_sites = sort_antibody_sites(filtered["site"].unique())
+
+    tab10_colors = list(plt.cm.tab10.colors)
+    tab10_idx = 0
+    site_colors = {}
+    for site in sorted_sites:
+        site_str = str(site)
+        if site_str not in entrenched_for_vfam:
+            site_colors[site] = "#e0e0e0"
+        elif site_str in entrenched_site_colors:
+            site_colors[site] = entrenched_site_colors[site_str]
+        else:
+            site_colors[site] = tab10_colors[tab10_idx % len(tab10_colors)]
+            tab10_idx += 1
+
+    return filtered, sorted_sites, site_colors, entrenched_for_vfam
+
+
+def _plot_entrenchment_boxplot(ax, filtered, sorted_sites, site_colors, y_var, y_label, entrenched_for_vfam, numbering_scheme):
+    """Plot a single entrenchment-colored boxplot on the given axis."""
+    ax.set_axisbelow(True)
+
+    palette = [site_colors.get(site, "#e0e0e0") for site in sorted_sites]
+
+    sns.boxplot(
+        data=filtered,
+        x="site",
+        y=y_var,
+        order=sorted_sites,
+        palette=palette,
+        whis=[5, 95],
+        showfliers=False,
+        width=0.7,
+        ax=ax,
+    )
+
+    ax.set_ylabel(y_label, fontsize=14)
+    ax.set_title(y_label, fontsize=16)
+    ax.tick_params(axis="x", rotation=90, labelbottom=True)
+    ax.grid(True)
+
+    for tick_label in ax.get_xticklabels():
+        site_str = tick_label.get_text()
+        if site_str in entrenched_for_vfam:
+            tick_label.set_color(site_colors.get(site_str, "black"))
+            tick_label.set_fontweight("bold")
+    add_cdr_shading(ax, sorted_sites, numbering_scheme=numbering_scheme)
+
+
+def _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam):
+    """Add shared entrenchment legend to figure."""
+    legend_handles = []
+    legend_labels = []
+    entrenched_sorted = sort_antibody_sites(
+        [s for s in sorted_sites if str(s) in entrenched_for_vfam]
+    )
+    for site in entrenched_sorted:
+        legend_handles.append(
+            plt.Line2D(
+                [0], [0],
+                marker="s",
+                color="w",
+                markerfacecolor=site_colors[site],
+                markeredgecolor="black",
+                markeredgewidth=0.5,
+                markersize=10,
+            )
+        )
+        legend_labels.append(f"Site {site}")
+
+    legend_handles.append(plt.Line2D([0], [0], marker="", color="w", linestyle=""))
+    legend_labels.append("")
+
+    legend_handles.append(
+        plt.Line2D(
+            [0], [0],
+            marker="s",
+            color="w",
+            markerfacecolor="#e0e0e0",
+            markeredgecolor="black",
+            markeredgewidth=0.5,
+            markersize=10,
+        )
+    )
+    legend_labels.append("Not entrenched")
+
+    fig.legend(
+        legend_handles,
+        legend_labels,
+        bbox_to_anchor=(1.02, 0.5),
+        loc="center left",
+        borderaxespad=0.0,
+        title="Entrenched Sites",
+        fontsize=12,
+        title_fontsize=14,
+    )
+
+
+def plot_rsa_by_entrenchment(
+    df,
+    v_family,
+    entrenched_site_set,
+    numbering_scheme="imgt",
+    germline_only=False,
+    entrenched_site_colors=None,
+    figsize=(20, 12),
+    save_path=None,
+    title=None,
+):
+    """
+    Plot RSA boxplots for a single V family with 3 subplots showing different RSA metrics,
+    colored by site entrenchment status with CDR background shading.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with columns: site, v_family_heavy, is_germline,
+        rsa_heavy_light_antigen, burial_by_antigen, burial_by_light_chain
+    v_family : str
+        V family to plot (e.g., 'IGHV1', 'IGHV3', 'IGHV4')
+    entrenched_site_set : set of str
+        Set of site strings that are entrenched for this v_family.
+    numbering_scheme : str
+        Numbering scheme for CDR shading ('imgt' or 'chothia')
+    germline_only : bool
+        If True, only plot germline-encoded sites
+    entrenched_site_colors : dict, optional
+        Dictionary mapping site strings to colors. Defaults to ENTRENCHED_SITE_COLORS.
+    figsize : tuple
+        Figure size (width, height)
+    save_path : str, optional
+        Path to save the figure
+    title : str, optional
+        Plot title
+
+    Returns
+    -------
+    fig, axes : matplotlib figure and axes
+    """
+    filtered, sorted_sites, site_colors, entrenched_for_vfam = _prepare_entrenchment_data(
+        df, v_family, entrenched_site_set, germline_only, entrenched_site_colors
+    )
+
+    y_vars = [
+        ("rsa_heavy_light_antigen", "RSA (Heavy + Light + Antigen)"),
+        ("burial_by_antigen", "Δ RSA Antigen"),
+        ("burial_by_light_chain", "Δ RSA Light Chain"),
+    ]
+
+    fig, axes = plt.subplots(3, 1, figsize=figsize, sharex=True)
+
+    for i, (y_var, y_label) in enumerate(y_vars):
+        _plot_entrenchment_boxplot(
+            axes[i], filtered, sorted_sites, site_colors,
+            y_var, y_label, entrenched_for_vfam, numbering_scheme,
+        )
+
+    axes[-1].set_xlabel("Site", fontsize=14)
+    _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam)
+
+    plt.tight_layout()
+
+    if title is None:
+        germ_str = " (Germline Only)" if germline_only else ""
+        title = f"RSA Analysis for {v_family}{germ_str}"
+    fig.suptitle(title, fontsize=22, y=1.05)
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight", dpi=800)
+
+    plt.show()
+    return fig, axes
+
+
+def plot_rsa_complex_by_entrenchment(
+    df,
+    v_family,
+    entrenched_site_set,
+    numbering_scheme="imgt",
+    germline_only=False,
+    entrenched_site_colors=None,
+    figsize=(20, 5),
+    save_path=None,
+    title=None,
+):
+    """
+    Plot RSA in complex boxplot for a single V family (single subplot),
+    colored by site entrenchment status with CDR background shading.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with columns: site, v_family_heavy, is_germline, rsa_heavy_light_antigen
+    v_family : str
+        V family to plot (e.g., 'IGHV1', 'IGHV3', 'IGHV4')
+    entrenched_site_set : set of str
+        Set of site strings that are entrenched for this v_family.
+    numbering_scheme : str
+        Numbering scheme for CDR shading ('imgt' or 'chothia')
+    germline_only : bool
+        If True, only plot germline-encoded sites
+    entrenched_site_colors : dict, optional
+        Dictionary mapping site strings to colors. Defaults to ENTRENCHED_SITE_COLORS.
+    figsize : tuple
+        Figure size (width, height)
+    save_path : str, optional
+        Path to save the figure
+    title : str, optional
+        Plot title
+
+    Returns
+    -------
+    fig, ax : matplotlib figure and axes
+    """
+    filtered, sorted_sites, site_colors, entrenched_for_vfam = _prepare_entrenchment_data(
+        df, v_family, entrenched_site_set, germline_only, entrenched_site_colors
+    )
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+    _plot_entrenchment_boxplot(
+        ax, filtered, sorted_sites, site_colors,
+        "rsa_heavy_light_antigen", "RSA (Heavy + Light + Antigen)",
+        entrenched_for_vfam, numbering_scheme,
+    )
+    ax.set_title("")
+
+    ax.set_xlabel("Site", fontsize=14)
+    _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam)
+
+    plt.tight_layout()
+
+    if title is None:
+        germ_str = " (Germline Only)" if germline_only else ""
+        title = f"RSA in Complex for {v_family}{germ_str}"
+    fig.suptitle(title, fontsize=22, y=1.05)
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight", dpi=800)
+
+    plt.show()
+    return fig, ax
