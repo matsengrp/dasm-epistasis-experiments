@@ -947,6 +947,302 @@ def examine_site(
     return fig
 
 
+def examine_sites_multi(
+    df,
+    sites,
+    numbering_scheme,
+    palette_aa,
+    comparison_type="within",
+    save_fig=False,
+    output_dir="figures/site_analysis",
+):
+    """
+    Create multi-site examination plots arranged in two figures:
+    1. Selection factors: one row of scatter plots, one per site/vfamily
+    2. RSA grid: rows = 3 RSA properties, columns = sites
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Main data frame with RSA and structural data
+    sites : list of tuples
+        List of (vfamily, site) tuples to examine,
+        e.g. [('IGHV3', '33'), ('IGHV1', '33'), ('IGHV3', '50'), ('IGHV1', '50')]
+    numbering_scheme : str
+        Numbering scheme ('imgt' or 'chothia')
+    palette_aa : dict
+        Amino acid color palette
+    comparison_type : str
+        Type of comparison ('within' for within-family)
+    save_fig : bool
+        Whether to save the figures
+    output_dir : str
+        Directory for saving figures
+
+    Returns
+    -------
+    fig_sf, fig_rsa : matplotlib figures (selection factors, RSA grid)
+    """
+    n_sites = len(sites)
+
+    TITLE_SIZE = 11
+    LABEL_SIZE = 10
+    TICK_SIZE = 9
+    ANNOT_SIZE = 8
+
+    # --- Figure 1: Selection factors (one row) ---
+    fig_sf, axes_sf = plt.subplots(1, n_sites, figsize=(3.2 * n_sites, 3.2))
+    if n_sites == 1:
+        axes_sf = [axes_sf]
+
+    for col_idx, (vfamily, site) in enumerate(sites):
+        ax = axes_sf[col_idx]
+
+        if comparison_type == "within":
+            entrenchment_results_df = pd.read_csv(
+                f"_output/entrenchment_analysis/{numbering_scheme}/comparison_within_{vfamily}.csv"
+            )
+            entrenchment_results_df["substitution"] = (
+                entrenchment_results_df["parent_aa_1_and_target_aa_2"]
+                + "\u2192"
+                + entrenchment_results_df["parent_aa_2_and_target_aa_1"]
+            )
+
+            site_data = entrenchment_results_df[
+                entrenchment_results_df.site == site
+            ]
+            site_data = site_data[
+                site_data["parent_aa_1_and_target_aa_2"]
+                <= site_data["parent_aa_2_and_target_aa_1"]
+            ]
+
+            sns.scatterplot(
+                data=site_data,
+                x="log_selection_factor_1",
+                y="log_selection_factor_2",
+                hue="is_entrenched",
+                palette={True: "#262626", False: "#D4D2D2"},
+                ax=ax,
+                legend=False,
+                s=40,
+                alpha=0.85,
+                edgecolor="black",
+                linewidth=0.5,
+            )
+            ax.set_xlim(-4, 1)
+            ax.set_ylim(-4, 1)
+            ax.axhline(0, color="black", linestyle="--", linewidth=1, alpha=0.3)
+            ax.axvline(0, color="black", linestyle="--", linewidth=1, alpha=0.3)
+            ax.axline((0, 0), slope=1, linestyle="--", color="red", alpha=0.3)
+            ax.set_title(f"Site {site} in {vfamily}", fontsize=TITLE_SIZE)
+            ax.set_xlabel("Forward selection (A\u2192B)", fontsize=LABEL_SIZE)
+            ax.set_ylabel("Backward selection (A\u2190B)", fontsize=LABEL_SIZE)
+            ax.tick_params(labelsize=TICK_SIZE)
+
+            # Annotate points
+            x_threshold = 0.5
+            y_threshold = 0.3
+            x_offset = 0.18
+
+            points = list(
+                zip(
+                    site_data["log_selection_factor_1"],
+                    site_data["log_selection_factor_2"],
+                    site_data["substitution"],
+                )
+            )
+
+            callout_overrides = {
+                ("33", "IGHV3"): {
+                    "labels": {"A\u2192G", "D\u2192E", "A\u2192T", "G\u2192S"},
+                    "label_x": -3.7,
+                    "label_y_start": 0.5,
+                    "label_spacing": 0.3,
+                },
+                ("50", "IGHV3"): {
+                    "labels": {"F\u2192Y", "L\u2192V", "A\u2192V"},
+                    "label_x": -1.5,
+                    "label_y_start": 0.7,
+                    "label_spacing": 0.3,
+                },
+                ("53", "IGHV3"): {
+                    "labels": {"D\u2192N", "N\u2192T", "N\u2192S", "D\u2192G"},
+                    "label_order": ["D\u2192N", "D\u2192G", "N\u2192T", "N\u2192S"],
+                    "label_x": -3.7,
+                    "label_y_start": 0.5,
+                    "label_spacing": 0.3,
+                },
+            }
+
+            # Labels to force to the left of their dot
+            force_left_overrides = {
+                ("52", "IGHV3"): {"K\u2192R", "G\u2192R"},
+            }
+
+            override = callout_overrides.get((site, vfamily))
+            callout_labels = override["labels"] if override else set()
+            force_left = force_left_overrides.get((site, vfamily), set())
+
+            for x, y, label in points:
+                if label in callout_labels:
+                    continue
+
+                if label in force_left:
+                    ax.text(
+                        x - x_offset, y, label,
+                        fontsize=ANNOT_SIZE, ha="right", va="center", zorder=5,
+                    )
+                    continue
+
+                has_point_to_right = any(
+                    (ox > x)
+                    and (ox - x < x_threshold)
+                    and (abs(oy - y) < y_threshold)
+                    for ox, oy, _ in points
+                    if (ox, oy) != (x, y)
+                )
+                if has_point_to_right:
+                    ax.text(
+                        x - x_offset, y, label,
+                        fontsize=ANNOT_SIZE, ha="right", va="center", zorder=5,
+                    )
+                else:
+                    ax.text(
+                        x + x_offset, y, label,
+                        fontsize=ANNOT_SIZE, ha="left", va="center", zorder=5,
+                    )
+
+            if override:
+                callout_pts = [
+                    (x, y, l) for x, y, l in points if l in callout_labels
+                ]
+                if "label_order" in override:
+                    order = {l: i for i, l in enumerate(override["label_order"])}
+                    callout_pts.sort(key=lambda p: order.get(p[2], len(order)))
+                else:
+                    callout_pts.sort(key=lambda p: -p[1])
+                lx = override["label_x"]
+                ly_start = override["label_y_start"]
+                spacing = override["label_spacing"]
+
+                for i, (x, y, label) in enumerate(callout_pts):
+                    ly = ly_start - i * spacing
+                    ax.annotate(
+                        label,
+                        xy=(x, y),
+                        xytext=(lx, ly),
+                        fontsize=ANNOT_SIZE,
+                        ha="left",
+                        va="center",
+                        arrowprops=dict(
+                            arrowstyle="-",
+                            color="black",
+                            alpha=0.4,
+                            linewidth=0.8,
+                        ),
+                        zorder=5,
+                    )
+
+    fig_sf.tight_layout()
+
+    # --- Figure 2: RSA grid (3 rows x n_sites columns) ---
+    rsa_vars = [
+        ("rsa_heavy_light_antigen", "RSA in complex"),
+        ("burial_by_antigen", "\u0394 RSA Antigen"),
+        ("burial_by_light_chain", "\u0394 RSA Light Chain"),
+    ]
+
+    fig_rsa, axes_rsa = plt.subplots(
+        3, n_sites, figsize=(2.5 * n_sites, 6), squeeze=False,
+    )
+
+    for col_idx, (vfamily, site) in enumerate(sites):
+        cur_df = df[
+            (df.is_germline == True)
+            & (df.site == site)
+            & (df.v_family_heavy == vfamily)
+        ]
+
+        for row_idx, (y_var, y_label) in enumerate(rsa_vars):
+            ax = axes_rsa[row_idx, col_idx]
+
+            sns.boxplot(
+                cur_df,
+                x="amino_acid",
+                y=y_var,
+                showfliers=False,
+                hue="amino_acid",
+                palette=palette_aa,
+                ax=ax,
+                whis=[5, 95],
+            )
+            ax.grid(True, axis="y", alpha=0.3, linestyle="-")
+            ax.tick_params(labelsize=TICK_SIZE)
+
+            if row_idx == 0:
+                ax.set_title(f"Site {site} in {vfamily}", fontsize=TITLE_SIZE)
+            else:
+                ax.set_title("")
+
+            if col_idx == 0:
+                ax.set_ylabel(y_label, fontsize=LABEL_SIZE)
+            else:
+                ax.set_ylabel("")
+                ax.tick_params(labelleft=False)
+
+            if row_idx == len(rsa_vars) - 1:
+                ax.set_xlabel("Amino acid", fontsize=LABEL_SIZE)
+            else:
+                ax.set_xlabel("")
+
+    # Share y-axis limits within each row
+    for row_idx in range(3):
+        all_ylims = [
+            axes_rsa[row_idx, c].get_ylim() for c in range(n_sites)
+        ]
+        ymin = min(lim[0] for lim in all_ylims)
+        ymax = max(lim[1] for lim in all_ylims)
+        for c in range(n_sites):
+            axes_rsa[row_idx, c].set_ylim(ymin, ymax)
+
+    # Shared amino acid legend
+    handles = [
+        plt.Line2D(
+            [0], [0], marker="s", color="w",
+            markerfacecolor=palette_aa[aa], markeredgecolor="black",
+            markeredgewidth=0.5, markersize=8,
+        )
+        for aa in sorted(palette_aa.keys())
+    ]
+    labels = sorted(palette_aa.keys())
+    fig_rsa.legend(
+        handles, labels,
+        bbox_to_anchor=(1.02, 0.5), loc="center left",
+        borderaxespad=0.0, title="Amino Acid",
+        fontsize=9, title_fontsize=10,
+    )
+
+    fig_rsa.tight_layout()
+
+    if save_fig:
+        import os
+
+        os.makedirs(output_dir, exist_ok=True)
+        site_label = "_".join(f"{v}_{s}" for v, s in sites)
+        fig_sf.savefig(
+            f"{output_dir}/multi_{site_label}_selection_factors.png",
+            bbox_inches="tight",
+            dpi=800,
+        )
+        fig_rsa.savefig(
+            f"{output_dir}/multi_{site_label}_rsa_grid.png",
+            bbox_inches="tight",
+            dpi=800,
+        )
+
+    return fig_sf, fig_rsa
+
+
 def plot_ramachandran_by_site_range(
     df,
     center_site,
