@@ -619,6 +619,7 @@ class CachedNeutralMutabilityDataset:
         multihit_model=None,
         subset_size=None,
         cache_dir=localify(f"ANALYSIS_CACHE/"),
+        skip_nucleotide=False,
     ):
         self.dataset_nickname = dataset_nickname
         self.branch_length_mode = branch_length_mode
@@ -628,6 +629,7 @@ class CachedNeutralMutabilityDataset:
         self.multihit_model = multihit_model
         self.subset_size = subset_size
         self.cache_dir = cache_dir
+        self.skip_nucleotide = skip_nucleotide
 
         # Create cache directory if it doesn't exist
         os.makedirs(cache_dir, exist_ok=True)
@@ -678,9 +680,14 @@ class CachedNeutralMutabilityDataset:
 
         try:
             # Explicitly specify site column as string to handle alphanumeric sites
-            self.nuc_neutral_df = pd.read_csv(
-                self.cache_files["nucleotide"], compression="gzip", dtype={"site": str}
-            )
+            if self.skip_nucleotide:
+                self.nuc_neutral_df = None
+            else:
+                self.nuc_neutral_df = pd.read_csv(
+                    self.cache_files["nucleotide"],
+                    compression="gzip",
+                    dtype={"site": str},
+                )
             self.aa_neutral_df = pd.read_csv(
                 self.cache_files["amino_acid"], compression="gzip", dtype={"site": str}
             )
@@ -700,21 +707,23 @@ class CachedNeutralMutabilityDataset:
             self.pcp_df = pd.read_csv(self.cache_files["pcp_df"], compression="gzip")
 
             # Validate that DataFrames are not empty
-            if any(
-                len(df) == 0
-                for df in [
-                    self.nuc_neutral_df,
-                    self.aa_neutral_df,
-                    self.aa_to_any_neutral_df,
-                    self.codon_neutral_df,
-                    self.codon_to_any_neutral_df,
-                    self.pcp_df,
-                ]
-            ):
+            dfs_to_check = [
+                self.aa_neutral_df,
+                self.aa_to_any_neutral_df,
+                self.codon_neutral_df,
+                self.codon_to_any_neutral_df,
+                self.pcp_df,
+            ]
+            if not self.skip_nucleotide:
+                dfs_to_check.insert(0, self.nuc_neutral_df)
+            if any(len(df) == 0 for df in dfs_to_check):
                 raise ValueError("One or more cached DataFrames are empty")
 
             print(f"✓ Loaded from gzip cache:")
-            print(f"  - Nucleotide DataFrame: {len(self.nuc_neutral_df):,} rows")
+            if self.skip_nucleotide:
+                print(f"  - Nucleotide DataFrame: skipped")
+            else:
+                print(f"  - Nucleotide DataFrame: {len(self.nuc_neutral_df):,} rows")
             print(f"  - Amino Acid DataFrame: {len(self.aa_neutral_df):,} rows")
             print(
                 f"  - Amino Acid to Any DataFrame: {len(self.aa_to_any_neutral_df):,} rows"
@@ -782,6 +791,9 @@ class CachedNeutralMutabilityDataset:
 
         # Save to cache
         self._save_to_cache()
+
+        if self.skip_nucleotide:
+            self.nuc_neutral_df = None
 
     def _save_to_cache(self):
         """Save dataframes to gzip-compressed cache files."""
