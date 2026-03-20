@@ -574,6 +574,10 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
                 (counts_pairwise['v_family_1'] == v_fam) &
                 (counts_pairwise['v_family_2'] == v_fam)
             ]
+            # Deduplicate mirrored pairs: keep only one direction (A→B, B→A) not also (B→A, A→B)
+            counts_pairwise = counts_pairwise[
+                counts_pairwise['parent_aa_1_and_target_aa_2'] < counts_pairwise['parent_aa_2_and_target_aa_1']
+            ]
         else:
             # Between family comparison (e.g., IGHV1_vs_IGHV3)
             v_fam1, v_fam2 = cur_pair_name.split('_vs_')
@@ -653,6 +657,6 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
                frameon=True, title='Sites')
 
     if savefig_prefix:
-        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.pdf', dpi=800)
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.png', dpi=800)
 
     fig.show()
