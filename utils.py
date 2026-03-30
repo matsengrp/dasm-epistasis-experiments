@@ -10,6 +10,7 @@ from netam.sequences import translate_sequence, AA_STR_SORTED
 from netam.codon_table import single_mutant_aa_indices
 
 from Bio.Data import CodonTable
+from scipy.stats import entropy as scipy_entropy
 
 import dnsmex
 assert getattr(dnsmex, '__source__', None) == "dasm-epistasis-experiments", (
@@ -811,3 +812,38 @@ def load_entrenched_sites(numbering_scheme='chothia', base_dir='_output/entrench
     site_color_map = ENTRENCHED_SITE_COLORS
 
     return entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map, within_dfs, vs_dfs
+
+
+def calculate_shannon_entropy_per_site(germline_codons_df, v_families=None):
+    """
+    Calculate Shannon entropy of germline amino acid usage at each site.
+
+    Parameters
+    ----------
+    germline_codons_df : DataFrame
+        Must contain columns: 'v_family', 'site', 'amino_acid'.
+    v_families : list or None
+        If provided, restrict to these V families.
+
+    Returns
+    -------
+    DataFrame with columns: 'site', 'shannon_entropy', 'n_unique_aa', 'n_germlines'.
+    Sites with only one unique amino acid are excluded (zero entropy / no variation).
+    """
+    df = germline_codons_df.copy()
+    if v_families is not None:
+        df = df[df.v_family.isin(v_families)]
+
+    results = []
+    for site, site_data in df.groupby('site'):
+        aa_counts = site_data['amino_acid'].value_counts()
+        if len(aa_counts) <= 1:
+            continue
+        probs = aa_counts.values / aa_counts.sum()
+        results.append({
+            'site': site,
+            'shannon_entropy': scipy_entropy(probs, base=2),
+            'n_unique_aa': len(aa_counts),
+            'n_germlines': len(site_data),
+        })
+    return pd.DataFrame(results)
