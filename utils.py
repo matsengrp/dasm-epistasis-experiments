@@ -828,7 +828,6 @@ def calculate_shannon_entropy_per_site(germline_codons_df, v_families=None):
     Returns
     -------
     DataFrame with columns: 'site', 'shannon_entropy', 'n_unique_aa', 'n_germlines'.
-    Sites with only one unique amino acid are excluded (zero entropy / no variation).
     """
     df = germline_codons_df.copy()
     if v_families is not None:
@@ -837,8 +836,6 @@ def calculate_shannon_entropy_per_site(germline_codons_df, v_families=None):
     results = []
     for site, site_data in df.groupby('site'):
         aa_counts = site_data['amino_acid'].value_counts()
-        if len(aa_counts) <= 1:
-            continue
         probs = aa_counts.values / aa_counts.sum()
         results.append({
             'site': site,
