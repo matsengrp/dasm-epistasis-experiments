@@ -811,7 +811,7 @@ def examine_site(
         )
         entrenchment_results_df["substitution"] = (
             entrenchment_results_df["parent_aa_1_and_target_aa_2"]
-            + "→"
+            + "\u2194"
             + entrenchment_results_df["parent_aa_2_and_target_aa_1"]
         )
 
@@ -843,8 +843,8 @@ def examine_site(
         ax[1].axvline(0, color="black", linestyle="--", linewidth=1, alpha=0.3)
         ax[1].axline((0, 0), slope=1, linestyle="--", color="red", alpha=0.3)
         ax[1].set_title("Degree of entrenchment", fontsize=TITLE_SIZE)
-        ax[1].set_xlabel("Forward selection (A→B)", fontsize=LABEL_SIZE)
-        ax[1].set_ylabel("Backward selection (A←B)", fontsize=LABEL_SIZE)
+        ax[1].set_xlabel("Selection A\u2192B", fontsize=LABEL_SIZE)
+        ax[1].set_ylabel("Selection A\u2190B", fontsize=LABEL_SIZE)
         ax[1].tick_params(labelsize=TICK_SIZE)
 
         # Annotate points
@@ -863,13 +863,13 @@ def examine_site(
         # Ad-hoc overrides: specific labels to pull into a vertical list with lines
         callout_overrides = {
             ("33", "IGHV3"): {
-                "labels": {"A→G", "D→E", "A→T", "G→S"},
+                "labels": {"A\u2194G", "D\u2194E", "A\u2194T", "G\u2194S"},
                 "label_x": -3.7,
                 "label_y_start": 0.5,
                 "label_spacing": 0.3,
             },
             ("50", "IGHV3"): {
-                "labels": {"F→Y", "L→V", "A→V"},
+                "labels": {"F\u2194Y", "L\u2194V", "A\u2194V"},
                 "label_x": -1.5,
                 "label_y_start": 0.7,
                 "label_spacing": 0.3,
@@ -1004,7 +1004,7 @@ def examine_sites_multi(
             )
             entrenchment_results_df["substitution"] = (
                 entrenchment_results_df["parent_aa_1_and_target_aa_2"]
-                + "\u2192"
+                + "\u2194"
                 + entrenchment_results_df["parent_aa_2_and_target_aa_1"]
             )
 
@@ -1035,8 +1035,8 @@ def examine_sites_multi(
             ax.axvline(0, color="black", linestyle="--", linewidth=1, alpha=0.3)
             ax.axline((0, 0), slope=1, linestyle="--", color="red", alpha=0.3)
             ax.set_title(f"Site {site} in {vfamily}", fontsize=TITLE_SIZE)
-            ax.set_xlabel("Forward selection (A\u2192B)", fontsize=LABEL_SIZE)
-            ax.set_ylabel("Backward selection (A\u2190B)", fontsize=LABEL_SIZE)
+            ax.set_xlabel("Selection A\u2192B", fontsize=LABEL_SIZE)
+            ax.set_ylabel("Selection A\u2190B", fontsize=LABEL_SIZE)
             ax.tick_params(labelsize=TICK_SIZE)
 
             # Annotate points
@@ -1054,20 +1054,20 @@ def examine_sites_multi(
 
             callout_overrides = {
                 ("33", "IGHV3"): {
-                    "labels": {"A\u2192G", "D\u2192E", "A\u2192T", "G\u2192S"},
+                    "labels": {"A\u2194G", "D\u2194E", "A\u2194T", "G\u2194S"},
                     "label_x": -3.7,
                     "label_y_start": 0.5,
                     "label_spacing": 0.3,
                 },
                 ("50", "IGHV3"): {
-                    "labels": {"F\u2192Y", "L\u2192V", "A\u2192V"},
+                    "labels": {"F\u2194Y", "L\u2194V", "A\u2194V"},
                     "label_x": -1.5,
                     "label_y_start": 0.7,
                     "label_spacing": 0.3,
                 },
                 ("53", "IGHV3"): {
-                    "labels": {"D\u2192N", "N\u2192T", "N\u2192S", "D\u2192G"},
-                    "label_order": ["D\u2192N", "D\u2192G", "N\u2192T", "N\u2192S"],
+                    "labels": {"D\u2194N", "N\u2194T", "N\u2194S", "D\u2194G"},
+                    "label_order": ["D\u2194N", "D\u2194G", "N\u2194T", "N\u2194S"],
                     "label_x": -3.7,
                     "label_y_start": 0.5,
                     "label_spacing": 0.3,
@@ -1076,7 +1076,7 @@ def examine_sites_multi(
 
             # Labels to force to the left of their dot
             force_left_overrides = {
-                ("52", "IGHV3"): {"K\u2192R", "G\u2192R"},
+                ("52", "IGHV3"): {"K\u2194R", "G\u2194R"},
             }
 
             override = callout_overrides.get((site, vfamily))
@@ -1478,6 +1478,8 @@ def _plot_entrenchment_boxplot(ax, filtered, sorted_sites, site_colors, y_var, y
     ax.set_title(y_label, fontsize=16)
     ax.tick_params(axis="x", rotation=90, labelbottom=True)
     ax.grid(True)
+
+    ax.set_xlim(-0.5, len(sorted_sites) - 0.5)
 
     for tick_label in ax.get_xticklabels():
         site_str = tick_label.get_text()
