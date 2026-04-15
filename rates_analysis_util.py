@@ -494,7 +494,8 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     plt.show()
 
     if savefig_prefix:
-        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.png', dpi=300, bbox_inches='tight')
+        # Save as PDF (vector) for small file size and fast LaTeX embedding.
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.pdf', bbox_inches='tight')
 
 
 def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_color_map,
@@ -623,6 +624,10 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         ax_max = max(counts_pairwise['log_ratio_1'].max(), counts_pairwise['log_ratio_2'].max())
         axes[ax_i].plot([ax_min, ax_max], [ax_min, ax_max], linestyle='--', color='black', linewidth=1, label='y=x')
 
+        # Add axes labels
+        axes[ax_i].set_xlabel('A\u2192B Observed/Expected Ratio (log)')
+        axes[ax_i].set_ylabel('A\u2190B Observed/Expected Ratio (log)')
+
         # Remove individual subplot legends
         if axes[ax_i].get_legend():
             axes[ax_i].get_legend().remove()
@@ -633,7 +638,7 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
 
     # Add title
     fig.suptitle(f'Germline-divergent sites comparison of Observed/Expected Counts Ratios\n{title_extra}')
-
+    
     # Create legend handles for all unique sites
     legend_handles = []
     legend_labels = []
@@ -657,6 +662,7 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
                frameon=True, title='Sites')
 
     if savefig_prefix:
-        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.png', dpi=800)
+        # Save as PDF (vector) for small file size and fast LaTeX embedding.
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.pdf', bbox_inches='tight')
 
     fig.show()
