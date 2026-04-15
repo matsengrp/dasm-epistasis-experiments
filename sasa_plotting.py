@@ -12,6 +12,20 @@ from matplotlib.gridspec import GridSpec
 
 from utils import sort_antibody_sites, add_cdr_shading, ENTRENCHED_SITE_COLORS
 
+# Default RSA metrics shown in multi-panel plots.
+# Override via the `rsa_metrics` parameter to add/remove rows.
+DEFAULT_RSA_METRICS = [
+    ("rsa_heavy_light_antigen", "RSA (Heavy + Light + Antigen)"),
+    ("burial_by_antigen", "Δ RSA Antigen"),
+    ("burial_by_light_chain", "Δ RSA Light Chain"),
+    ("burial_by_vdj_junction", "Δ RSA VDJ Junction"),
+]
+
+# Fixed y-axis limits by metric type
+RSA_YLIM = (0, 1)
+BURIAL_YLIM_ENTRENCHMENT = (0, 0.65)
+BURIAL_YLIM_SITE_GRID = (0, 0.5)
+
 
 def plot_rsa_by_vfamily(
     df,
@@ -230,6 +244,7 @@ def plot_single_vfamily_rsa_comparison(
     highlighted_data,
     numbering_scheme,
     palette_aa,
+    rsa_metrics=None,
     figsize=(20, 12),
     save_path=None,
     title=None,
@@ -260,7 +275,11 @@ def plot_single_vfamily_rsa_comparison(
     -------
     fig, axes : matplotlib figure and axes objects
     """
-    fig, axes = plt.subplots(3, 1, figsize=figsize, sharex=True)
+    y_vars = rsa_metrics if rsa_metrics is not None else DEFAULT_RSA_METRICS
+    n_metrics = len(y_vars)
+    fig, axes = plt.subplots(n_metrics, 1, figsize=figsize, sharex=True)
+    if n_metrics == 1:
+        axes = [axes]
     fig.subplots_adjust(hspace=0.4)
 
     # Filter data for the specified V family
@@ -276,13 +295,6 @@ def plot_single_vfamily_rsa_comparison(
     filtered_hl["site"] = pd.Categorical(
         filtered_hl["site"], categories=sorted_sites, ordered=True
     )
-
-    # Define the three y-variables to plot
-    y_vars = [
-        ("rsa_heavy_light_antigen", "RSA (Heavy + Light + Antigen)"),
-        ("burial_by_antigen", "Δ RSA Antigen"),
-        ("burial_by_light_chain", "Δ RSA Light Chain"),
-    ]
 
     for i, (y_var, y_label) in enumerate(y_vars):
         # Put grid behind points
@@ -323,6 +335,10 @@ def plot_single_vfamily_rsa_comparison(
         axes[i].set_title(f"{y_label}", fontsize=20)
         axes[i].tick_params(axis="x", rotation=90, labelsize=14)
         axes[i].grid(True)
+        if y_var.startswith("rsa_"):
+            axes[i].set_ylim(*RSA_YLIM)
+        elif y_var.startswith("burial_by_"):
+            axes[i].set_ylim(*BURIAL_YLIM_ENTRENCHMENT)
         add_cdr_shading(axes[i], sorted_sites, numbering_scheme=numbering_scheme)
 
     axes[-1].set_xlabel("Site", fontsize=16)
@@ -953,6 +969,7 @@ def examine_sites_multi(
     numbering_scheme,
     palette_aa,
     comparison_type="within",
+    rsa_metrics=None,
     save_fig=False,
     output_dir="figures/site_analysis",
 ):
@@ -1146,14 +1163,11 @@ def examine_sites_multi(
     fig_sf.tight_layout()
 
     # --- Figure 2: RSA grid (3 rows x n_sites columns) ---
-    rsa_vars = [
-        ("rsa_heavy_light_antigen", "RSA in complex"),
-        ("burial_by_antigen", "\u0394 RSA Antigen"),
-        ("burial_by_light_chain", "\u0394 RSA Light Chain"),
-    ]
+    rsa_vars = rsa_metrics if rsa_metrics is not None else DEFAULT_RSA_METRICS
+    n_rows = len(rsa_vars)
 
     fig_rsa, axes_rsa = plt.subplots(
-        3, n_sites, figsize=(2.5 * n_sites, 6), squeeze=False,
+        n_rows, n_sites, figsize=(2.5 * n_sites, 2 * n_rows), squeeze=False,
     )
 
     for col_idx, (vfamily, site) in enumerate(sites):
@@ -1195,15 +1209,18 @@ def examine_sites_multi(
             else:
                 ax.set_xlabel("")
 
-    # Share y-axis limits within each row
-    for row_idx in range(3):
-        all_ylims = [
-            axes_rsa[row_idx, c].get_ylim() for c in range(n_sites)
-        ]
-        ymin = min(lim[0] for lim in all_ylims)
-        ymax = max(lim[1] for lim in all_ylims)
+    # Set fixed y-axis limits per row
+    for row_idx, (y_var, _) in enumerate(rsa_vars):
+        if y_var.startswith("rsa_"):
+            ylim = RSA_YLIM
+        elif y_var.startswith("burial_by_"):
+            ylim = BURIAL_YLIM_SITE_GRID
+        else:
+            # Fallback: share auto-scaled limits across columns
+            all_ylims = [axes_rsa[row_idx, c].get_ylim() for c in range(n_sites)]
+            ylim = (min(l[0] for l in all_ylims), max(l[1] for l in all_ylims))
         for c in range(n_sites):
-            axes_rsa[row_idx, c].set_ylim(ymin, ymax)
+            axes_rsa[row_idx, c].set_ylim(*ylim)
 
     # Shared amino acid legend
     handles = [
@@ -1229,15 +1246,14 @@ def examine_sites_multi(
 
         os.makedirs(output_dir, exist_ok=True)
         site_label = "_".join(f"{v}_{s}" for v, s in sites)
+        # Save as PDF (vector) for small file size and fast LaTeX embedding.
         fig_sf.savefig(
-            f"{output_dir}/multi_{site_label}_selection_factors.png",
+            f"{output_dir}/multi_{site_label}_selection_factors.pdf",
             bbox_inches="tight",
-            dpi=800,
         )
         fig_rsa.savefig(
-            f"{output_dir}/multi_{site_label}_rsa_grid.png",
+            f"{output_dir}/multi_{site_label}_rsa_grid.pdf",
             bbox_inches="tight",
-            dpi=800,
         )
 
     return fig_sf, fig_rsa
@@ -1418,10 +1434,10 @@ def plot_ramachandran_by_site_range(
         import os
 
         os.makedirs(output_dir, exist_ok=True)
+        # Save as PDF (vector) for small file size and fast LaTeX embedding.
         fig.savefig(
-            f"{output_dir}/site_{center_site}_angle_analysis.png",
+            f"{output_dir}/site_{center_site}_angle_analysis.pdf",
             bbox_inches="tight",
-            dpi=300,
         )
 
     return fig, axes
@@ -1478,6 +1494,11 @@ def _plot_entrenchment_boxplot(ax, filtered, sorted_sites, site_colors, y_var, y
     ax.set_title(y_label, fontsize=16)
     ax.tick_params(axis="x", rotation=90, labelbottom=True)
     ax.grid(True)
+
+    if y_var.startswith("rsa_"):
+        ax.set_ylim(*RSA_YLIM)
+    elif y_var.startswith("burial_by_"):
+        ax.set_ylim(*BURIAL_YLIM_ENTRENCHMENT)
 
     ax.set_xlim(-0.5, len(sorted_sites) - 0.5)
 
@@ -1545,12 +1566,13 @@ def plot_rsa_by_entrenchment(
     numbering_scheme="imgt",
     germline_only=False,
     entrenched_site_colors=None,
+    rsa_metrics=None,
     figsize=(20, 12),
     save_path=None,
     title=None,
 ):
     """
-    Plot RSA boxplots for a single V family with 3 subplots showing different RSA metrics,
+    Plot RSA boxplots for a single V family with 5 subplots showing different RSA metrics,
     colored by site entrenchment status with CDR background shading.
 
     Parameters
@@ -1583,13 +1605,12 @@ def plot_rsa_by_entrenchment(
         df, v_family, entrenched_site_set, germline_only, entrenched_site_colors
     )
 
-    y_vars = [
-        ("rsa_heavy_light_antigen", "RSA (Heavy + Light + Antigen)"),
-        ("burial_by_antigen", "Δ RSA Antigen"),
-        ("burial_by_light_chain", "Δ RSA Light Chain"),
-    ]
+    y_vars = rsa_metrics if rsa_metrics is not None else DEFAULT_RSA_METRICS
 
-    fig, axes = plt.subplots(3, 1, figsize=figsize, sharex=True)
+    n_metrics = len(y_vars)
+    fig, axes = plt.subplots(n_metrics, 1, figsize=figsize, sharex=True)
+    if n_metrics == 1:
+        axes = [axes]
 
     for i, (y_var, y_label) in enumerate(y_vars):
         _plot_entrenchment_boxplot(
@@ -1608,7 +1629,7 @@ def plot_rsa_by_entrenchment(
     fig.suptitle(title, fontsize=22, y=1.05)
 
     if save_path:
-        fig.savefig(save_path, bbox_inches="tight", dpi=800)
+        fig.savefig(save_path, bbox_inches="tight", dpi=300)
 
     plt.show()
     return fig, axes
@@ -1678,7 +1699,7 @@ def plot_rsa_complex_by_entrenchment(
     fig.suptitle(title, fontsize=22, y=1.05)
 
     if save_path:
-        fig.savefig(save_path, bbox_inches="tight", dpi=800)
+        fig.savefig(save_path, bbox_inches="tight", dpi=300)
 
     plt.show()
     return fig, ax
