@@ -18,7 +18,7 @@ DEFAULT_RSA_METRICS = [
     ("rsa_heavy_light_antigen", "RSA (Heavy + Light + Antigen)"),
     ("burial_by_antigen", "Δ RSA Antigen"),
     ("burial_by_light_chain", "Δ RSA Light Chain"),
-    ("burial_by_vdj_junction", "Δ RSA VDJ Junction"),
+    ("burial_by_vdj_junction", "Δ RSA CDR3"),
 ]
 
 # Fixed y-axis limits by metric type
