@@ -1642,7 +1642,7 @@ def plot_rsa_complex_by_entrenchment(
     numbering_scheme="imgt",
     germline_only=False,
     entrenched_site_colors=None,
-    figsize=(20, 5),
+    figsize=(16, 4),
     save_path=None,
     title=None,
 ):
