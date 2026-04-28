@@ -671,7 +671,11 @@ class CachedNeutralMutabilityDataset:
 
     def _cache_exists(self):
         """Check if all required cache files exist."""
-        return all(os.path.exists(filepath) for filepath in self.cache_files.values())
+        return all(
+            os.path.exists(filepath)
+            for key, filepath in self.cache_files.items()
+            if not (self.skip_nucleotide and key == "nucleotide")
+        )
 
     def _load_from_cache(self):
         """Load dataframes from gzip-compressed cache files."""
@@ -782,7 +786,10 @@ class CachedNeutralMutabilityDataset:
         )
 
         # Generate the dataframes
-        self.nuc_neutral_df = dataset.get_nucleotide_probabilities_df()
+        if self.skip_nucleotide:
+            self.nuc_neutral_df = None
+        else:
+            self.nuc_neutral_df = dataset.get_nucleotide_probabilities_df()
         self.aa_neutral_df = dataset.get_aa_probabilities_df()
         self.aa_to_any_neutral_df = dataset.get_aa_to_any_probabilities_df()
         self.codon_neutral_df = dataset.get_codon_probabilities_df()
@@ -792,17 +799,15 @@ class CachedNeutralMutabilityDataset:
         # Save to cache
         self._save_to_cache()
 
-        if self.skip_nucleotide:
-            self.nuc_neutral_df = None
-
     def _save_to_cache(self):
         """Save dataframes to gzip-compressed cache files."""
         print("Saving data to gzip cache...")
 
         try:
-            self.nuc_neutral_df.to_csv(
-                self.cache_files["nucleotide"], index=False, compression="gzip"
-            )
+            if self.nuc_neutral_df is not None:
+                self.nuc_neutral_df.to_csv(
+                    self.cache_files["nucleotide"], index=False, compression="gzip"
+                )
             self.aa_neutral_df.to_csv(
                 self.cache_files["amino_acid"], index=False, compression="gzip"
             )
