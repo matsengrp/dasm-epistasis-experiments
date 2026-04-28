@@ -40,6 +40,15 @@ Heavy + Light chains → measures unbound antibody accessibility.
 ### Scenario 3: `heavy_only` (Heavy Chain Isolation)
 Heavy chain only → measures heavy chain without light chain.
 
+### Scenario 4: `heavy_no_vdj_junction` (Remove V/D/J Junction, sites 95-102)
+Heavy chain with V/D/J junction removed → measures intra-chain epistasis with somatically diversified CDR-H3.
+
+### Scenario 5: `heavy_no_fulldj` (Remove Full DJ, sites 95-113)
+Heavy chain with full DJ region removed → confirms FR4 doesn't contribute beyond the variable junction.
+
+### Scenario 6: `heavy_no_cdr3` (Remove CDR3 Chothia, sites 96-101)
+Heavy chain with Chothia CDR3 definition removed.
+
 ## SASA Calculation Method
 
 Uses DSSP with Wilke reference values to calculate absolute SASA (Ų) and relative SASA (0-1 scale). Includes Cα coordinates.
@@ -70,6 +79,14 @@ Measures how antigen binding changes antibody accessibility (negative = buried, 
 sasa_light_effect = sasa_heavy_light - sasa_heavy_only
 ```
 Measures how light chain affects heavy chain accessibility. Both absolute and relative changes calculated.
+
+### Heavy Chain Removal Effects
+```
+sasa_vdj_junction_effect = sasa_heavy_only - sasa_heavy_no_vdj_junction  (remove sites 95-102)
+sasa_fulldj_effect = sasa_heavy_only - sasa_heavy_no_fulldj (remove sites 95-113)
+sasa_cdr3_effect = sasa_heavy_only - sasa_heavy_no_cdr3   (remove sites 96-101)
+```
+Measures how each removed region buries remaining heavy chain sites (negative = removal exposes site, i.e. region was burying it).
 
 ## Output Data Structure
 
@@ -159,6 +176,35 @@ class AntigenRemover(Select):
             return False
         # Otherwise, keep only antibody chains (original behavior as fallback)
         return chain.id in self.antibody_chains
+
+
+class HeavyChainRangeRemover(Select):
+    """Remove a range of Chothia sites from the heavy chain, keep everything else.
+
+    Used to measure how specific heavy chain regions bury other sites.
+    The range is inclusive on both ends.
+    """
+
+    def __init__(self, heavy_chain_id, start_site, end_site):
+        self.heavy_chain_id = heavy_chain_id
+        self.start_site = start_site
+        self.end_site = end_site
+
+    def accept_residue(self, residue):
+        chain_id = residue.get_parent().id
+        if chain_id == self.heavy_chain_id:
+            site_num = residue.id[1]
+            return site_num < self.start_site or site_num > self.end_site
+        return True
+
+
+# Scenarios that remove a range of heavy chain sites.
+# Each maps to (start_site, end_site) inclusive.
+HEAVY_REMOVAL_SCENARIOS = {
+    "heavy_no_vdj_junction": (95, 102),  # Variable D/J junction
+    "heavy_no_fulldj": (95, 113),        # Full DJ region including FR4
+    "heavy_no_cdr3": (96, 101),          # CDR3 Chothia definition
+}
 
 
 class StructureFilter:
@@ -630,7 +676,8 @@ class SASACalculator:
         Parameters:
         -----------
         scenario : str
-            One of: "heavy_light_antigen", "heavy_light", "heavy_only"
+            One of: "heavy_light_antigen", "heavy_light", "heavy_only",
+            or any key from HEAVY_REMOVAL_SCENARIOS
         """
         parser = PDBParser(PERMISSIVE=True, QUIET=True)
         structure = parser.get_structure("pdb", pdb_path)
@@ -660,6 +707,9 @@ class SASACalculator:
         elif scenario == "heavy_only":
             keep_chains = [heavy_chain]
             target_chains = [heavy_chain]
+        elif scenario in HEAVY_REMOVAL_SCENARIOS:
+            keep_chains = [heavy_chain]
+            target_chains = [heavy_chain]
         else:
             raise ValueError(f"Invalid scenario: {scenario}")
 
@@ -683,6 +733,16 @@ class SASACalculator:
 
             # Use strict chain filtering - keep only the chains specified for this scenario
             io.save(str(temp_pdb_path), ChainSelector(keep_chains))
+
+            # For heavy chain removal scenarios, further filter to remove site range
+            if scenario in HEAVY_REMOVAL_SCENARIOS:
+                start_site, end_site = HEAVY_REMOVAL_SCENARIOS[scenario]
+                step1_structure = parser.get_structure("step1", str(temp_pdb_path))
+                io.set_structure(step1_structure)
+                io.save(
+                    str(temp_pdb_path),
+                    HeavyChainRangeRemover(heavy_chain, start_site, end_site),
+                )
 
             # Reload the filtered structure
             filtered_structure = parser.get_structure("filtered", str(temp_pdb_path))
@@ -842,7 +902,11 @@ class SASACalculator:
         # Calculate phi/psi angles once from original structure
         phi_psi_df = self._calculate_phi_psi(pdb_path)
 
-        scenarios = ["heavy_light_antigen", "heavy_light", "heavy_only"]
+        scenarios = [
+            "heavy_light_antigen",
+            "heavy_light",
+            "heavy_only",
+        ] + list(HEAVY_REMOVAL_SCENARIOS.keys())
         scenario_results = {}
 
         # Calculate SASA for each scenario
@@ -958,6 +1022,28 @@ class SASACalculator:
                 comparison["rsa_light_effect"] / comparison["rsa_heavy_only"]
             ).replace([np.inf, -np.inf], np.nan)
 
+        # Calculate removal effects for each heavy chain removal scenario
+        for scenario_name in HEAVY_REMOVAL_SCENARIOS:
+            sasa_col = f"sasa_{scenario_name}"
+            rsa_col = f"rsa_{scenario_name}"
+            if (
+                "sasa_heavy_only" in comparison.columns
+                and sasa_col in comparison.columns
+            ):
+                effect_tag = scenario_name.replace("heavy_no_", "")
+                comparison[f"sasa_{effect_tag}_effect"] = (
+                    comparison["sasa_heavy_only"] - comparison[sasa_col]
+                )
+                comparison[f"rsa_{effect_tag}_effect"] = (
+                    comparison["rsa_heavy_only"] - comparison[rsa_col]
+                )
+                comparison[f"sasa_{effect_tag}_relative"] = (
+                    comparison[f"sasa_{effect_tag}_effect"] / comparison[sasa_col]
+                ).replace([np.inf, -np.inf], np.nan)
+                comparison[f"rsa_{effect_tag}_relative"] = (
+                    comparison[f"rsa_{effect_tag}_effect"] / comparison[rsa_col]
+                ).replace([np.inf, -np.inf], np.nan)
+
         return comparison
 
     def cleanup(self):
@@ -1066,6 +1152,22 @@ def process_pdb_directory(
                 print(f"Warning: Could not save intermediate results: {save_error}")
 
     # Reorder columns for better readability
+    # Build removal scenario columns dynamically
+    removal_sasa_cols = []
+    removal_effect_cols = []
+    for scenario_name in HEAVY_REMOVAL_SCENARIOS:
+        removal_sasa_cols.extend([
+            f"sasa_{scenario_name}",
+            f"rsa_{scenario_name}",
+        ])
+        effect_tag = scenario_name.replace("heavy_no_", "")
+        removal_effect_cols.extend([
+            f"sasa_{effect_tag}_effect",
+            f"rsa_{effect_tag}_effect",
+            f"sasa_{effect_tag}_relative",
+            f"rsa_{effect_tag}_relative",
+        ])
+
     column_order = [
         "pdb_id",
         "organism",
@@ -1091,6 +1193,8 @@ def process_pdb_directory(
         "rsa_heavy_light_antigen",
         "rsa_heavy_light",
         "rsa_heavy_only",
+        # Removal scenario raw values
+        *removal_sasa_cols,
         # Effect calculations
         "sasa_antigen_effect",
         "rsa_antigen_effect",
@@ -1100,6 +1204,7 @@ def process_pdb_directory(
         "rsa_light_effect",
         "sasa_light_relative",
         "rsa_light_relative",
+        *removal_effect_cols,
         "ca_coordinates",
     ]
 

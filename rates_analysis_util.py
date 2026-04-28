@@ -433,6 +433,7 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(8, 6))
+    ax.tick_params(labelsize=12)
 
     # Plot regular points in grey
     sns.scatterplot(data=compare_dasm_rates,
@@ -467,10 +468,22 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
                     x='log_ratio', y='log_selection_factor',
                     s=90, hue='site', style='v_family', palette=site_color_map)
 
-    # Add orthogonal regression line
-    x_range = np.array([x_clean.min(), x_clean.max()])
-    y_ortho = slope_ortho * x_range + intercept_ortho
-    ax.plot(x_range, y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal regression')
+    # Set matching x/y limits and ticks every 1.0
+    all_vals = pd.concat([x, y])
+    ax_min = all_vals.min()
+    ax_max = all_vals.max()
+    lim_min = np.floor(ax_min)
+    lim_max = np.ceil(ax_max)
+    ax.set_xlim(lim_min - 0.1, lim_max + 0.1)
+    ax.set_ylim(lim_min - 0.1, lim_max + 0.1)
+    ticks = np.arange(lim_min, lim_max + 0.5, 1.0)
+    ax.set_xticks(ticks)
+    ax.set_yticks(ticks)
+    ax.set_box_aspect(1)
+
+    # Add orthogonal regression line spanning full axis range
+    y_ortho = slope_ortho * np.array([lim_min, lim_max]) + intercept_ortho
+    ax.plot([lim_min, lim_max], y_ortho, linestyle='-', color='blue', linewidth=2, label='Orthogonal\nregression')
 
     ax.axvline(0, color='black', linestyle=':', linewidth=1)
     ax.axhline(0, color='black', linestyle=':', linewidth=1)
@@ -478,8 +491,8 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     # Add legend
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
-    plt.xlabel('Observed Rate / Expected Rate (log)')
-    plt.ylabel('DASM Selection Factor (log)')
+    plt.xlabel('Observed Rate / Expected Rate (log)', fontsize=13)
+    plt.ylabel('DASM Selection Factor (log)', fontsize=13)
 
     # Format the equation for the title
     if intercept_ortho >= 0:
@@ -487,18 +500,20 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     else:
         equation_ortho = f'y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
 
-    title = f'{title}\nOrthogonal regression: {equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
-    plt.title(title)
+    title = f'{title}\n{equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
+    plt.title(title, fontsize=14)
 
     plt.tight_layout()
     plt.show()
 
     if savefig_prefix:
-        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.png', dpi=300, bbox_inches='tight')
+        # Save as PDF (vector) for small file size and fast LaTeX embedding.
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_dasm_vs_rates_comparison.pdf', bbox_inches='tight')
 
 
 def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_color_map,
-                                  savefig_prefix=None, title_extra='', figures_dir='figures/'):
+                                  savefig_prefix=None, title_extra='', figures_dir='figures/',
+                                  panels=None):
     """
     Create pairwise comparison plots of observed/expected count ratios across V families.
 
@@ -528,19 +543,40 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
     figures_dir : str, optional
         Directory to save figures (default: 'figures/')
 
+    panels : list of str, optional
+        List of panel names to plot (e.g., ['IGHV1_vs_IGHV3', 'within_IGHV1']).
+        If None, plots all 6 panels.
+
     Returns:
     --------
     None (displays plot and optionally saves to file)
     """
-    fig, axes = plt.subplots(2, 3, figsize=(18, 7))
-    fig.subplots_adjust(hspace=0.5, wspace=0.3, right=0.85, top=0.8)
+    all_panels = ['IGHV1_vs_IGHV3', 'IGHV1_vs_IGHV4', 'IGHV3_vs_IGHV4', 'within_IGHV1', 'within_IGHV3', 'within_IGHV4']
+    plot_order = panels if panels is not None else all_panels
+
+    n_panels = len(plot_order)
+    ncols = min(n_panels, 3)
+    nrows = (n_panels + ncols - 1) // ncols
+    panel_size = 3.2
+    legend_width = 1.5
+    fig, axes = plt.subplots(nrows, ncols,
+                             figsize=(panel_size * ncols + legend_width, panel_size * nrows + 1.2),
+                             squeeze=False)
+    legend_right = 1 - legend_width / (panel_size * ncols + legend_width)
+    fig.subplots_adjust(hspace=0.55, wspace=0.55, right=legend_right, top=0.82)
     axes = axes.flatten()
+
+    # Hide unused axes and force square panels
+    for i in range(len(axes)):
+        if i >= n_panels:
+            axes[i].set_visible(False)
+        else:
+            axes[i].set_box_aspect(1)
+
     ax_i = 0
 
     # Collect all unique sites across all subplots
     all_sites = set()
-
-    plot_order = ['IGHV1_vs_IGHV3', 'IGHV1_vs_IGHV4', 'IGHV3_vs_IGHV4', 'within_IGHV1', 'within_IGHV3', 'within_IGHV4']
 
     for cur_pair_name in plot_order:
         cur_pairwise_df = pairwise_df_dict[cur_pair_name]
@@ -574,6 +610,13 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
                 (counts_pairwise['v_family_1'] == v_fam) &
                 (counts_pairwise['v_family_2'] == v_fam)
             ]
+            # Deduplicate mirrored pairs: keep only one direction (A→B, B→A) not also (B→A, A→B)
+            counts_pairwise = counts_pairwise[
+                counts_pairwise['parent_aa_1_and_target_aa_2'] < counts_pairwise['parent_aa_2_and_target_aa_1']
+            ]
+            cur_pairwise_df = cur_pairwise_df[
+                cur_pairwise_df['parent_aa_1_and_target_aa_2'] < cur_pairwise_df['parent_aa_2_and_target_aa_1']
+            ]
         else:
             # Between family comparison (e.g., IGHV1_vs_IGHV3)
             v_fam1, v_fam2 = cur_pair_name.split('_vs_')
@@ -602,8 +645,8 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         base_title = cur_pair_name.replace('_', ' ')
         n_plotted = len(entrenched_merged_pairwise)
         n_total = len(cur_pairwise_df)
-        base_title += f"\n(plotting {n_plotted} out of {n_total} entrenched site+aa pairs)"
-        axes[ax_i].set_title(base_title, fontsize=10)
+        base_title += f"\n(plotting {n_plotted} out of {n_total}\nentrenched site+aa pairs)"
+        axes[ax_i].set_title(base_title, fontsize=9)
 
         # Collect all unique sites
         all_sites.update(entrenched_merged_pairwise['site'].unique())
@@ -614,10 +657,29 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
         sns.scatterplot(entrenched_merged_pairwise, x='log_ratio_1', y='log_ratio_2',
                        hue='site', palette=site_color_map, ax=axes[ax_i], s=90)
 
-        # Add y=x dashed line
-        ax_min = min(counts_pairwise['log_ratio_1'].min(), counts_pairwise['log_ratio_2'].min())
-        ax_max = max(counts_pairwise['log_ratio_1'].max(), counts_pairwise['log_ratio_2'].max())
-        axes[ax_i].plot([ax_min, ax_max], [ax_min, ax_max], linestyle='--', color='black', linewidth=1, label='y=x')
+        # Set matching x/y limits so y=x is a true 45° diagonal
+        all_vals = pd.concat([counts_pairwise['log_ratio_1'], counts_pairwise['log_ratio_2']])
+        ax_min = all_vals.min()
+        ax_max = all_vals.max()
+        margin = (ax_max - ax_min) * 0.05
+        # Snap limits to integer ticks
+        lim_min = np.floor(ax_min - margin)
+        lim_max = np.ceil(ax_max + margin)
+        axes[ax_i].set_xlim(lim_min, lim_max)
+        axes[ax_i].set_ylim(lim_min, lim_max)
+
+        # Set consistent tick marks every 1.0
+        ticks = np.arange(lim_min, lim_max + 0.5, 1.0)
+        axes[ax_i].set_xticks(ticks)
+        axes[ax_i].set_yticks(ticks)
+
+        # Add y=x dashed line spanning full axis range
+        axes[ax_i].plot([lim_min, lim_max], [lim_min, lim_max],
+                        linestyle='--', color='black', linewidth=1, label='y=x')
+
+        # Add axes labels
+        axes[ax_i].set_xlabel('A\u2192B Observed/Expected\nRatio (log)')
+        axes[ax_i].set_ylabel('B\u2192A Observed/Expected\nRatio (log)')
 
         # Remove individual subplot legends
         if axes[ax_i].get_legend():
@@ -629,7 +691,7 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
 
     # Add title
     fig.suptitle(f'Germline-divergent sites comparison of Observed/Expected Counts Ratios\n{title_extra}')
-
+    
     # Create legend handles for all unique sites
     legend_handles = []
     legend_labels = []
@@ -653,6 +715,7 @@ def plot_rates_pairwise_analysis(compare_dasm_rates, pairwise_df_dict, site_colo
                frameon=True, title='Sites')
 
     if savefig_prefix:
-        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.pdf', dpi=800)
+        # Save as PDF (vector) for small file size and fast LaTeX embedding.
+        fig.savefig(f'{figures_dir}/{savefig_prefix}validation_rates_pairwise_comparison.pdf', bbox_inches='tight')
 
     fig.show()

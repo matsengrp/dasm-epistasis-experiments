@@ -176,6 +176,7 @@ cython_debug/
 #custom
 _ignore/
 _output/
+checkpoints/
 figures/
 germline/ogrdb_human_*
 dnsmex/local_config.py

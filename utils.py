@@ -10,6 +10,7 @@ from netam.sequences import translate_sequence, AA_STR_SORTED
 from netam.codon_table import single_mutant_aa_indices
 
 from Bio.Data import CodonTable
+from scipy.stats import entropy as scipy_entropy
 
 import dnsmex
 assert getattr(dnsmex, '__source__', None) == "dasm-epistasis-experiments", (
@@ -20,6 +21,13 @@ from dnsmex.local import localify
 from dnsmex import dasm_oe, dnsm_oe, dasm_zoo, dnsm_zoo
 
 GERMLINE_PATH_DICTIONARY = {'imgt':'germline/germline_codons_imgt.csv', 'chothia':'germline/germline_codons_chothia.csv'}
+
+# Consistent colors for all entrenched sites (tab20 palette).
+# Odd indices first then even to avoid similar adjacent pairs.
+_TAB20 = sns.color_palette("tab20", 20)
+_ENTRENCHED_PALETTE = [_TAB20[i] for i in range(0, 20, 2) if i not in (14,)] + [_TAB20[i] for i in range(1, 20, 2) if i not in (15,)]
+_ENTRENCHED_SITE_ORDER = ["33", "35", "50", "52", "53", "10", "9", "16", "29", "37", "67", "73", "94", "17", "18"]
+ENTRENCHED_SITE_COLORS = {site: _ENTRENCHED_PALETTE[i] for i, site in enumerate(_ENTRENCHED_SITE_ORDER)}
 
 
 def get_cdr_definitions(numbering_scheme='imgt', chain='heavy'):
@@ -800,9 +808,39 @@ def load_entrenched_sites(numbering_scheme='chothia', base_dir='_output/entrench
         key = f.split('/')[-1].replace('comparison_', '').replace('.csv', '')
         pairwise_df_dict[key] = pd.read_csv(f, dtype={'site': str})
 
-    # Create consistent color palette for entrenched sites
-    all_entrenched_sites = sort_antibody_sites(entrenched_sites_aas['site'].unique()) if not entrenched_sites_aas.empty else []
-    full_palette = sns.color_palette("tab20") + sns.color_palette("tab20b")[:5]
-    site_color_map = {str(site): full_palette[i] for i, site in enumerate(all_entrenched_sites)}
+    # Use the global ENTRENCHED_SITE_COLORS palette
+    site_color_map = ENTRENCHED_SITE_COLORS
 
     return entrenched_sites, entrenched_sites_aas, pairwise_df_dict, site_color_map, within_dfs, vs_dfs
+
+
+def calculate_shannon_entropy_per_site(germline_codons_df, v_families=None):
+    """
+    Calculate Shannon entropy of germline amino acid usage at each site.
+
+    Parameters
+    ----------
+    germline_codons_df : DataFrame
+        Must contain columns: 'v_family', 'site', 'amino_acid'.
+    v_families : list or None
+        If provided, restrict to these V families.
+
+    Returns
+    -------
+    DataFrame with columns: 'site', 'shannon_entropy', 'n_unique_aa', 'n_germlines'.
+    """
+    df = germline_codons_df.copy()
+    if v_families is not None:
+        df = df[df.v_family.isin(v_families)]
+
+    results = []
+    for site, site_data in df.groupby('site'):
+        aa_counts = site_data['amino_acid'].value_counts()
+        probs = aa_counts.values / aa_counts.sum()
+        results.append({
+            'site': site,
+            'shannon_entropy': scipy_entropy(probs, base=2),
+            'n_unique_aa': len(aa_counts),
+            'n_germlines': len(site_data),
+        })
+    return pd.DataFrame(results)

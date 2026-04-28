@@ -32,7 +32,7 @@ def load_data():
     ]
 
     model_dir = localify("DASM_TRAINED_MODELS_DIR")
-    model_name = "dasm_1m-v1jaffeCC+v1tangCC-joint"
+    model_name = "dasm_4m-v1jaffeCC+v1tangCC-joint"
 
     train_bls = pd.read_csv(f"{model_dir}/{model_name}.train_branch_lengths.csv")
     val_bls = pd.read_csv(f"{model_dir}/{model_name}.val_branch_lengths.csv")
