@@ -67,6 +67,8 @@ def fit_linear(X, y, name):
 def main():
     train_df, val_df = load_data()
 
+    print(f"\nDataset sizes: {len(train_df):,} training, {len(val_df):,} validation")
+
     # Use training data for fitting
     df = train_df
 
