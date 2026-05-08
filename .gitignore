@@ -175,7 +175,8 @@ cython_debug/
 
 #custom
 _ignore/
-_output/
+_output/*
+!_output/sasa_human_chothia_removal_effects.csv.gz
 checkpoints/
 figures/
 germline/ogrdb_human_*
