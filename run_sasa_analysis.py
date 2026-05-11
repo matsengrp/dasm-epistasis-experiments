@@ -121,11 +121,12 @@ from Bio.PDB.DSSP import DSSP
 from Bio.PDB.Polypeptide import PPBuilder
 
 # Constants - File paths and directories
-SABDAB_ABID_INFO_PATH = (
-    "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_2024-01-26_abid_info.tsv"
+SCRIPT_DIR = Path(__file__).resolve().parent
+SABDAB_ABID_INFO_PATH = str(
+    SCRIPT_DIR / "data/sabdab/sabdab_summary_2024-01-26_abid_info.tsv"
 )
-SABDAB_CHAIN_INFO_PATH = (
-    "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_all_2024-01-26.tsv"
+SABDAB_CHAIN_INFO_PATH = str(
+    SCRIPT_DIR / "data/sabdab/sabdab_summary_all_2024-01-26.tsv"
 )
 LIBCIFPP_DATA_DIR = "/home/nharel/miniforge3/envs/netam_env/share/libcifpp"
 PDB_BASE_DIR = "/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db"
