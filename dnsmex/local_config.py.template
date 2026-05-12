@@ -10,9 +10,9 @@ Then edit dnsmex/local_config.py to match your local paths.
 CONFIG = {
     # Data directory (contains PCP files and ANARCI outputs)
     "DATA_DIR": "~/data",
-    # Trained model directories (still in dnsm-experiments-1, data dependency)
-    "DNSM_TRAINED_MODELS_DIR": "~/re/dnsm-experiments-1/dnsm-train/trained_models",
-    "DASM_TRAINED_MODELS_DIR": "~/re/dnsm-experiments-1/dasm-train/trained_models",
+    # Trained model directories (included in this repository)
+    "DNSM_TRAINED_MODELS_DIR": "trained_models",
+    "DASM_TRAINED_MODELS_DIR": "trained_models",
     # Test output directories
     "DNSM_TEST_OUTPUT_DIR": "~/re/dnsm-experiments-1/dnsm-train/_ignore/test_output",
     "DASM_TEST_OUTPUT_DIR": "~/re/dnsm-experiments-1/dasm-train/_ignore/test_output",

@@ -1,0 +1,22 @@
+encoder_class: PlaceholderEncoder
+encoder_parameters: {}
+model_class: TransformerBinarySelectionModelWiggleAct
+model_hyperparameters:
+  d_model_per_head: 16
+  dim_feedforward: 512
+  dropout_prob: 0.1
+  known_token_count: 22
+  layer_count: 5
+  model_type: dnsm
+  multihit_model_name: null
+  neutral_model_name: ThriftyHumV0.2-59
+  nhead: 8
+  output_dim: 1
+  train_timestamp: 2025-05-30T13:16
+serialization_version: 0
+training_hyperparameters:
+  batch_size: 1024
+  learning_rate: 0.001
+  min_learning_rate: 1.0e-06
+  optimizer_name: RMSprop
+  weight_decay: 1.0e-06
