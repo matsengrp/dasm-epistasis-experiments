@@ -39,10 +39,25 @@ Trained DASM and DNSM model weights are included in the [`trained_models/`](trai
 
 ### Datasets
 
-The following datasets must be downloaded before running the analysis:
+Download and extract the [Zenodo dataset](https://zenodo.org/records/15931791) (`dnsm_data.tar.gz`) in the repository root:
 
-- **Rodriguez, Jaffe, and Tang** preprocessed datasets: available on [Zenodo](https://zenodo.org/records/15931791)
-- **Tang-SHM** dataset: available on [Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.np5hqc044)
+```bash
+tar xzf dnsm_data.tar.gz
+```
+
+This creates `DATA_DIR/v3/` with the Rodriguez, Jaffe, and Tang preprocessed PCP files and IMGT-numbered ANARCI outputs. The Chothia-numbered ANARCI files required by the analysis are already included in the repository.
+
+The **Tang-SHM** (out-of-frame) dataset is used by [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) via the [shmex](https://github.com/matsengrp/thrifty-experiments-1) package, which expects it at `~/data/v1/`. Download from [Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.np5hqc044) and place as `~/data/v1/tang-deepshm-oof_pcp_2024-04-09_MASKED_NI.csv.gz`.
+
+### Configure local paths
+
+Copy the configuration template:
+
+```bash
+cp dnsmex/local_config.py.template dnsmex/local_config.py
+```
+
+The default paths are pre-configured to work if you extracted the Zenodo data in the repository root. See [`dnsmex/local_config.py.template`](dnsmex/local_config.py.template) for all configurable paths.
 
 ### Solvent accessibility (SASA) data
 
@@ -54,33 +69,23 @@ To regenerate this data from scratch using [`run_sasa_analysis.py`](run_sasa_ana
 - **PDB structure files**: download from [RCSB PDB](https://www.rcsb.org/) or via SAbDab's bulk download. Update `PDB_BASE_DIR` in [`run_sasa_analysis.py`](run_sasa_analysis.py) to point to your local PDB directory.
 - **DSSP**: install via `conda install -c conda-forge dssp`
 
-### Configure local paths
-
-Copy the configuration template and set paths for your system:
-
-```bash
-cp dnsmex/local_config.py.template dnsmex/local_config.py
-```
-
-Edit `dnsmex/local_config.py` to set `DATA_DIR` to the location of your downloaded datasets. Model paths are pre-configured to use the `trained_models/` directory in this repository.
-
 ## Reproducing the analysis
 
 All intermediate outputs (DASM/DNSM test outputs, rate analysis results) are generated automatically on first run and cached for subsequent use.
 
 ### Step 1: Run main analysis notebooks
 
-Run [`v_families_dasm.ipynb`](v_families_dasm.ipynb) first — it runs the DASM model on the datasets, caches ~2.5 GB of outputs, and produces the entrenchment results used by subsequent notebooks (Figs 2, 5, S4, S10).
+Run [`v_families_dasm.ipynb`](v_families_dasm.ipynb) first — it runs the DASM model on the datasets, caches ~2.5 GB of outputs, and produces the entrenchment results used by subsequent notebooks (Figs 2, 5, S6, S12).
 
 The remaining notebooks can then be run in any order:
 
-- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy analysis (Figs 2, S9)
-- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Grantham distance analysis (Figs 4, S7)
-- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — RSA and structural analysis (Figs 3, S5, S6, S8, S11)
+- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy analysis (Figs 2C, S11)
+- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Grantham distance analysis (Figs 4, S9)
+- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — RSA and structural analysis (Figs 3, 5C, S7, S8, S10, S13)
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise similarity (Fig S1)
-- [`within_family_validation.ipynb`](within_family_validation.ipynb) — within-family validation (Fig S3)
-- [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Rodriguez validation (Fig 7)
-- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Jaffe+Tang thrifty validation (Figs 7, S12). Uses netam's built-in [Thrifty](https://github.com/matsengrp/netam) neutral mutation model to compute expected counts; generates a ~22 GB cache on first run.
+- [`within_family_validation.ipynb`](within_family_validation.ipynb) — within-family validation (Fig S5)
+- [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Rodriguez validation (Fig 7A)
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Jaffe+Tang thrifty validation (Figs 7B-C, S14). Uses netam's built-in [Thrifty](https://github.com/matsengrp/netam) neutral mutation model to compute expected counts; generates a ~22 GB cache on first run.
 
 ### Step 2: Aggregate results and create tables
 
@@ -100,7 +105,7 @@ python create_combined_validation_table.py    # Table S3
 | Fig 2 | Reciprocal selection + Entrenchment within IGHV1/3 + Shannon entropy at within-family entrenched sites | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) (reciprocal selection), [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) (entropy) |
 | Fig 3 | RSA at within-family entrenched sites + structural images | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) (RSA), structural images manually created |
 | Fig 4 | Grantham distance at entrenched sites | [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) |
-| Fig 5 | Between-family entrenchment with within-family overlay | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig 5 | Between-family entrenchment with within-family overlay | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) (A,B), [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) (C) |
 | Fig 6 | Structural entrenchment at sites 9 and 73 | Structural images manually created (ChimeraX) |
 | Fig 7 | Mutation rate validation | [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) (Rodriguez), [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) (Jaffe+Tang thrifty) |
 
@@ -110,16 +115,18 @@ python create_combined_validation_table.py    # Table S3
 |--------|-------------|--------|
 | Fig S1 | V-gene pairwise similarity | [`germline.ipynb`](germline.ipynb) |
 | Fig S2 | Threshold sensitivity within IGHV1 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
-| Fig S3 | Within-family validation strip plot | [`within_family_validation.ipynb`](within_family_validation.ipynb) |
-| Fig S4 | Within-family entrenchment for IGHV4 | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
-| Fig S5 | RSA at IGHV1 within-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S6 | RSA grid by site and amino acid | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S7 | Selection factors at within-family entrenched sites | [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) |
-| Fig S8 | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S9 | Shannon entropy (3-category entrenchment) | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
-| Fig S10 | Between-family entrenchment for additional V-family pairs | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
-| Fig S11 | Backbone angles at site 9 | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S12 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
+| Fig S3 | Threshold sensitivity within IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
+| Fig S4 | Threshold sensitivity IGHV1 vs IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
+| Fig S5 | Within-family validation strip plot | [`within_family_validation.ipynb`](within_family_validation.ipynb) |
+| Fig S6 | Within-family entrenchment for IGHV4 | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig S7 | RSA at IGHV1 within-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
+| Fig S8 | RSA grid by site and amino acid | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
+| Fig S9 | Selection factors at within-family entrenched sites | [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) |
+| Fig S10 | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
+| Fig S11 | Shannon entropy (3-category entrenchment) | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
+| Fig S12 | Between-family entrenchment for additional V-family pairs | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig S13 | Backbone angles at site 9 | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
+| Fig S14 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
 
 ### Tables
 
@@ -153,3 +160,17 @@ python create_combined_validation_table.py    # Table S3
 | [`light_chain_selection_at_entrenched_sites.ipynb`](light_chain_selection_at_entrenched_sites.ipynb) | Light chain selection analysis |
 | [`light_chain_pairing_bias_with_entrenched_sites.ipynb`](light_chain_pairing_bias_with_entrenched_sites.ipynb) | Light chain pairing bias |
 | [`neutral_rates_for_interesting_sites.ipynb`](neutral_rates_for_interesting_sites.ipynb) | Neutral rates at specific sites |
+
+## Archival files
+
+These files are not required for reproducing the paper results but are retained for reference.
+
+| Path | Description |
+|------|-------------|
+| [`old/`](old/) | Superseded notebook versions from earlier development |
+| [`branch-length-regression/`](branch-length-regression/) | Branch length regression analysis |
+| [`site_73_structural/`](site_73_structural/) | Structural analysis notes and ChimeraX commands for sites 73–75 |
+| [`extracted_plots/`](extracted_plots/) | Standalone exported plots |
+| [`checkpoints/`](checkpoints/) | Cached intermediate DataFrames |
+| [`NEUTRAL_TANG_BUG.md`](NEUTRAL_TANG_BUG.md) | Notes on a resolved neutral model bug |
+| [`_consistency_check.md`](_consistency_check.md) | Verification that filtering logic is consistent across notebooks |
