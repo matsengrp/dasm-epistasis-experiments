@@ -8,13 +8,86 @@ bioRxiv preprint: [10.64898/2026.04.21.720000](https://doi.org/10.64898/2026.04.
 
 ## Installation
 
-First follow the instructions to install [netam](https://github.com/matsengrp/netam) into a virtual environment.
+### 1. Install netam
 
-Then install additional dependencies:
+Follow the instructions to install [netam](https://github.com/matsengrp/netam) into a virtual environment.
+
+### 2. Install additional dependencies
 
 ```bash
 pip install aaindex Levenshtein logomaker statsmodels
-pip install -e /path/to/thrifty-experiments-1  # for shmex; see https://github.com/matsengrp/thrifty-experiments-1
+```
+
+### 3. Install shmex
+
+The rate validation analysis requires [shmex](https://github.com/matsengrp/thrifty-experiments-1) from the thrifty-experiments-1 repository:
+
+```bash
+git clone https://github.com/matsengrp/thrifty-experiments-1.git
+cd thrifty-experiments-1
+pip install -e .
+```
+
+## Data
+
+### Trained models
+
+Trained DASM and DNSM model weights are included in the [`trained_models/`](trained_models/) directory:
+
+- `dasm_4m-v1jaffeCC+v1tangCC-joint` — DASM model (4M parameters) trained on Jaffe + Tang datasets
+- `dnsm_1m-v1jaffe+v1tang-joint` — DNSM model (1M parameters) trained on Jaffe + Tang datasets
+
+### Datasets
+
+The following datasets must be downloaded before running the analysis:
+
+- **Rodriguez, Jaffe, and Tang** preprocessed datasets: available on [Zenodo](https://zenodo.org/records/15931791)
+- **Tang-SHM** dataset: available on [Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.np5hqc044)
+
+### Solvent accessibility (SASA) data
+
+Pre-computed SASA results are included in the repository (`_output/sasa_human_chothia_removal_effects.csv.gz`) and are loaded automatically by [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb).
+
+To regenerate this data from scratch using [`run_sasa_analysis.py`](run_sasa_analysis.py), you will need:
+
+- **SAbDab summary tables**: included in [`data/sabdab/`](data/sabdab/) (2024-01-26 snapshot). The V/J gene annotations in the abid_info file were generated via BLAST (https://github.com/phbradley/ADAPT), not from SAbDab directly.
+- **PDB structure files**: download from [RCSB PDB](https://www.rcsb.org/) or via SAbDab's bulk download. Update `PDB_BASE_DIR` in [`run_sasa_analysis.py`](run_sasa_analysis.py) to point to your local PDB directory.
+- **DSSP**: install via `conda install -c conda-forge dssp`
+
+### Configure local paths
+
+Copy the configuration template and set paths for your system:
+
+```bash
+cp dnsmex/local_config.py.template dnsmex/local_config.py
+```
+
+Edit `dnsmex/local_config.py` to set `DATA_DIR` to the location of your downloaded datasets. Model paths are pre-configured to use the `trained_models/` directory in this repository.
+
+## Reproducing the analysis
+
+All intermediate outputs (DASM/DNSM test outputs, rate analysis results) are generated automatically on first run and cached for subsequent use.
+
+### Step 1: Run main analysis notebooks
+
+Run [`v_families_dasm.ipynb`](v_families_dasm.ipynb) first — it runs the DASM model on the datasets, caches ~2.5 GB of outputs, and produces the entrenchment results used by subsequent notebooks (Figs 2, 5, S4, S10).
+
+The remaining notebooks can then be run in any order:
+
+- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy analysis (Figs 2, S9)
+- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Grantham distance analysis (Figs 4, S7)
+- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — RSA and structural analysis (Figs 3, S5, S6, S8, S11)
+- [`germline.ipynb`](germline.ipynb) — V-gene pairwise similarity (Fig S1)
+- [`within_family_validation.ipynb`](within_family_validation.ipynb) — within-family validation (Fig S3)
+- [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Rodriguez validation (Fig 7)
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Jaffe+Tang thrifty validation (Figs 7, S12). Uses netam's built-in [Thrifty](https://github.com/matsengrp/netam) neutral mutation model to compute expected counts; generates a ~22 GB cache on first run.
+
+### Step 2: Aggregate results and create tables
+
+```bash
+python create_combined_entrenched_sites.py    # Table S1
+python entrenchment_threshold_sensitivity.py  # Figs S2-S4
+python create_combined_validation_table.py    # Table S3
 ```
 
 ## Figure-to-source mapping
@@ -68,7 +141,7 @@ pip install -e /path/to/thrifty-experiments-1  # for shmex; see https://github.c
 | [`run_thrifty_neutral.py`](run_thrifty_neutral.py) | Generates cached neutral rate data for thrifty validation |
 | [`site9_discrepancy_analysis.ipynb`](site9_discrepancy_analysis.ipynb) | Investigation of site 9 validation discrepancy |
 | [`dnsmex/`](dnsmex/) | Core library for DNSM/DASM analysis |
-| [`germline/`](germline/) | Germline reference data (OGRDB-derived) |
+| [`germline/`](germline/) | Germline reference data (OGRDB-derived); to regenerate, run [`create_germline_codon_tables.py`](create_germline_codon_tables.py) (requires [ANARCI](https://github.com/oxpig/ANARCI)) |
 | `_output/entrenchment_analysis/` | Intermediate entrenchment results consumed by notebooks |
 
 ## Exploratory notebooks (not in paper)
