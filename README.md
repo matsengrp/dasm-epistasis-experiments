@@ -82,11 +82,9 @@ If you would like to regenerate this data from scratch using [`run_sasa_analysis
 
 ## Reproducing the analysis
 
-All intermediate outputs (DASM/DNSM test outputs, rate analysis results) are generated automatically on first run and cached for subsequent use.
-
 ### Step 1: Run main analysis notebooks
 
-Run [`v_families_dasm.ipynb`](v_families_dasm.ipynb) first — it runs the DASM model on the datasets, caches ~2.5 GB of outputs, writes entrenchment results used by following notebooks to `_output/entrenchment_analysis/`, and produces figures used by subsequent notebooks (Figs 2, 5, S6, S12).
+Run [`v_families_dasm.ipynb`](v_families_dasm.ipynb) first — it produces Figs 2, 5, S6, S12, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
 
 The remaining notebooks can then be run in any order:
 
@@ -96,7 +94,7 @@ The remaining notebooks can then be run in any order:
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
 - [`within_family_validation.ipynb`](within_family_validation.ipynb) — Validates that pooling V gene alleles within a family does not create false entrenchment calls (Fig S5)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
-- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). Uses netam's built-in [Thrifty](https://github.com/matsengrp/netam) neutral mutation model to compute expected counts; generates a ~22 GB cache on first run.
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14)
 
 ### Step 2: Aggregate results and create tables
 
