@@ -181,3 +181,5 @@ checkpoints/
 figures/
 germline/ogrdb_human_*
 dnsmex/local_config.py
+trained_models/
+DATA_DIR/

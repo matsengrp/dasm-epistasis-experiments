@@ -30,34 +30,43 @@ pip install -e .
 
 ## Data
 
-### Trained models
+All data required to reproduce the analyses — PCP datasets, trained model weights, cached model outputs, and neutral mutability results — are available as a single archive on Zenodo.
 
-Trained DASM and DNSM model weights are included in the [`trained_models/`](trained_models/) directory:
+### 1. Download and extract data
 
-- `dasm_4m-v1jaffeCC+v1tangCC-joint` — DASM model (4M parameters) trained on Jaffe + Tang datasets
-- `dnsm_1m-v1jaffe+v1tang-joint` — DNSM model (1M parameters) trained on Jaffe + Tang datasets
-
-### Datasets
-
-Download and extract the [Zenodo dataset](https://zenodo.org/records/15931791) (`dnsm_data.tar.gz`) in the repository root:
+Download `dasm-epistasis-data.tar` from [Zenodo](https://zenodo.org/records/XXXXXXX) and extract it:
 
 ```bash
-tar xzf dnsm_data.tar.gz
+tar xf dasm-epistasis-data.tar
 ```
 
-This creates `DATA_DIR/v3/` with the Rodriguez, Jaffe, and Tang preprocessed PCP files and IMGT-numbered ANARCI outputs. The Chothia-numbered ANARCI files required by the analysis are already included in the repository.
+This creates a `dasm-epistasis-data/` directory containing:
 
-The **Tang-SHM** (out-of-frame) dataset is used by [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) via the [shmex](https://github.com/matsengrp/thrifty-experiments-1) package, which expects it at `~/data/v1/`. Download from [Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.np5hqc044) and place as `~/data/v1/tang-deepshm-oof_pcp_2024-04-09_MASKED_NI.csv.gz`.
+| Directory | Contents |
+|-----------|----------|
+| `v3/` | PCP files (Jaffe, Tang, Rodriguez) and Chothia-numbered ANARCI outputs |
+| `v1/` | Tang-SHM out-of-frame dataset (used by shmex) |
+| `trained_models/` | DASM (4M params) and DNSM (1M params) model weights and branch lengths |
+| `dasm_test_output/` | Cached DASM evaluation results on Rodriguez |
+| `dnsm_test_output/` | Cached observed mutation counts (using the DNSM framework) on Jaffe, Tang, and Rodriguez |
+| `neutral_mutability_cache/` | Pre-computed neutral mutability DataFrames for Jaffe, Tang, and Rodriguez |
 
-### Configure local paths
-
-Copy the configuration template:
+### 2. Configure local paths
 
 ```bash
 cp dnsmex/local_config.py.template dnsmex/local_config.py
 ```
 
-The default paths are pre-configured to work if you downloaded the data as described above. See [`dnsmex/local_config.py.template`](dnsmex/local_config.py.template) for all configurable paths.
+Edit `dnsmex/local_config.py` and set `ZENODO_DATA_DIR` to the path where you extracted the archive (e.g., `~/dasm-epistasis-data`).
+
+### 3. Set up shmex data path
+
+The [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) notebook uses the [shmex](https://github.com/matsengrp/thrifty-experiments-1) package, which expects data at `~/data/v1/`. Create a symlink from the extracted data:
+
+```bash
+mkdir -p ~/data
+ln -s /path/to/dasm-epistasis-data/v1 ~/data/v1
+```
 
 ### Solvent Accessible Surface Area (SASA) data
 

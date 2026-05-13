@@ -5,17 +5,23 @@ Copy this file to local_config.py and customize the values below:
     cp dnsmex/local_config.py.template dnsmex/local_config.py
 
 Then edit dnsmex/local_config.py to match your local paths.
+
+After downloading and extracting the Zenodo data archive (see README.md),
+set ZENODO_DATA_DIR below to the path where you extracted it.
 """
 
+# Set this to the directory where you extracted dasm-epistasis-data.tar
+ZENODO_DATA_DIR = "CHANGEME"
+
 CONFIG = {
-    # Data directory (contains PCP files and ANARCI outputs)
-    "DATA_DIR": "DATA_DIR",
-    # Trained model directories (included in this repository)
-    "DNSM_TRAINED_MODELS_DIR": "trained_models",
-    "DASM_TRAINED_MODELS_DIR": "trained_models",
-    # Test output directories
-    "DNSM_TEST_OUTPUT_DIR": "~/re/dnsm-experiments-1/dnsm-train/_ignore/test_output",
-    "DASM_TEST_OUTPUT_DIR": "~/re/dnsm-experiments-1/dasm-train/_ignore/test_output",
+    # Data directory (contains v3/ with PCP files and ANARCI outputs)
+    "DATA_DIR": ZENODO_DATA_DIR,
+    # Trained model directories
+    "DNSM_TRAINED_MODELS_DIR": f"{ZENODO_DATA_DIR}/trained_models",
+    "DASM_TRAINED_MODELS_DIR": f"{ZENODO_DATA_DIR}/trained_models",
+    # Test output directories (cached DNSM/DASM evaluation results)
+    "DNSM_TEST_OUTPUT_DIR": f"{ZENODO_DATA_DIR}/dnsm_test_output",
+    "DASM_TEST_OUTPUT_DIR": f"{ZENODO_DATA_DIR}/dasm_test_output",
     # Cache directory for neutral mutability analysis
-    "ANALYSIS_CACHE": "~/re/dnsm-experiments-1/_cache",
+    "ANALYSIS_CACHE": f"{ZENODO_DATA_DIR}/neutral_mutability_cache",
 }
