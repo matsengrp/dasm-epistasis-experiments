@@ -178,7 +178,8 @@ _ignore/
 _output/*
 !_output/sasa_human_chothia_removal_effects.csv.gz
 checkpoints/
-figures/
+figures/*
+!figures/.gitkeep
 germline/ogrdb_human_*
 dnsmex/local_config.py
 trained_models/
