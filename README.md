@@ -59,7 +59,7 @@ This creates a `dasm-epistasis-data/` directory containing:
 cp dnsmex/local_config.py.template dnsmex/local_config.py
 ```
 
-Edit `dnsmex/local_config.py` and set `ZENODO_DATA_DIR` to the path where you extracted the archive (e.g., `~/dasm-epistasis-data`).
+Edit `dnsmex/local_config.py` if needed. The default assumes the archive was extracted to `~/dasm-epistasis-data`; update `ZENODO_DATA_DIR` if you extracted it elsewhere.
 
 ### 3. Set up shmex data path
 
