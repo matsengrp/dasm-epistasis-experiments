@@ -34,7 +34,7 @@ All data required to reproduce the analyses are available as a single archive on
 
 ### 1. Download and extract data
 
-Download `dasm-epistasis-data.tar` from [Zenodo](https://zenodo.org/records/XXXXXXX) and extract it:
+Download `dasm-epistasis-data.tar` from [Zenodo](https://doi.org/10.5281/zenodo.20171634) and extract it:
 
 ```bash
 tar xf dasm-epistasis-data.tar
