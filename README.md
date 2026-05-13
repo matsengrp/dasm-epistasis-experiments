@@ -173,4 +173,3 @@ These files are not required for reproducing the paper results but are retained 
 | [`old/`](old/) | Superseded notebook versions from earlier development |
 | [`site_73_structural/`](site_73_structural/) | Structural analysis notes and ChimeraX commands for sites 73–75 |
 | [`extracted_plots/`](extracted_plots/) | Standalone exported plots |
-| [`_consistency_check.md`](_consistency_check.md) | Verification that filtering logic is consistent across notebooks |
