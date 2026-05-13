@@ -30,7 +30,7 @@ pip install -e .
 
 ## Data
 
-All data required to reproduce the analyses — PCP datasets, trained model weights, cached model outputs, and neutral mutability results — are available as a single archive on Zenodo.
+All data required to reproduce the analyses are available as a single archive on Zenodo.
 
 ### 1. Download and extract data
 
@@ -47,9 +47,11 @@ This creates a `dasm-epistasis-data/` directory containing:
 | `v3/` | PCP files (Jaffe, Tang, Rodriguez) and Chothia-numbered ANARCI outputs |
 | `v1/` | Tang-SHM out-of-frame dataset (used by shmex) |
 | `trained_models/` | DASM (4M params) and DNSM (1M params) model weights and branch lengths |
-| `dasm_test_output/` | Cached DASM evaluation results on Rodriguez |
-| `dnsm_test_output/` | Cached observed mutation counts (using the DNSM framework) on Jaffe, Tang, and Rodriguez |
-| `neutral_mutability_cache/` | Pre-computed neutral mutability DataFrames for Jaffe, Tang, and Rodriguez |
+| `dasm_test_output/` | Cached DASM evaluation results on Rodriguez (see note below) |
+| `dnsm_test_output/` | Cached DNSM evaluation results on Jaffe, Tang, and Rodriguez (see note below) |
+| `neutral_mutability_cache/` | Pre-computed neutral mutability DataFrames for Jaffe, Tang, and Rodriguez (see note below) |
+
+**Note on cached outputs:** The `dasm_test_output/`, `dnsm_test_output/`, and `neutral_mutability_cache/` directories contain pre-computed intermediate results that are included for convenience. The analysis code will regenerate these automatically if they are missing, but recomputation is expensive. Only the PCP files, ANARCI outputs, and trained models are strictly required.
 
 ### 2. Configure local paths
 
