@@ -84,7 +84,7 @@ If you would like to regenerate this data from scratch using [`run_sasa_analysis
 
 ### Step 1: Run main analysis notebooks
 
-Run [`v_families_dasm.ipynb`](v_families_dasm.ipynb) first — it produces Figs 2, 5, S6, S12, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
+Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S12, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
 
 The remaining notebooks can then be run in any order:
 
@@ -111,12 +111,12 @@ python create_combined_validation_table.py    # Table S3
 | Figure | Panel | Description | Source |
 |--------|-------|-------------|--------|
 | Fig 1 | | Entrenchment flow diagram | Manually created (`entrenchment_flow_figure.pdf`, SVG in tex repo) |
-| Fig 2 | A,B | Reciprocal selection + entrenchment within IGHV1/3 | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig 2 | A,B | Reciprocal selection + entrenchment within IGHV1/3 | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
 | Fig 2 | C | Shannon entropy at within-family entrenched sites | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
 | Fig 3 | A–C | Structural images | Manually created (ChimeraX) |
 | Fig 3 | D | RSA at within-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig 4 | | Grantham distance at entrenched sites | [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) |
-| Fig 5 | A,B | Between-family entrenchment with within-family overlay | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig 5 | A,B | Between-family entrenchment with within-family overlay | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
 | Fig 5 | C | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig 6 | | Structural entrenchment at sites 9 and 73 | Manually created (ChimeraX) |
 | Fig 7 | A | Mutation rate validation using out-of-frame baseline | [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) |
@@ -131,13 +131,13 @@ python create_combined_validation_table.py    # Table S3
 | Fig S3 | Threshold sensitivity within IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
 | Fig S4 | Threshold sensitivity IGHV1 vs IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
 | Fig S5 | Per-V-gene-allele median selection factors at entrenched sites | [`within_family_validation.ipynb`](within_family_validation.ipynb) |
-| Fig S6 | Within-family entrenchment for IGHV4 | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig S6 | Within-family entrenchment for IGHV4 | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
 | Fig S7 | RSA at IGHV1 within-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S8 | RSA grid by site and amino acid | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S9 | Reciprocal selection factors at within-family entrenched sites | [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) |
 | Fig S10 | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S11 | Shannon entropy (3-category entrenchment) | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
-| Fig S12 | Between-family entrenchment for additional V-family pairs | [`v_families_dasm.ipynb`](v_families_dasm.ipynb) |
+| Fig S12 | Between-family entrenchment for additional V-family pairs | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
 | Fig S13 | Backbone angles at site 9 | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S14 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
 

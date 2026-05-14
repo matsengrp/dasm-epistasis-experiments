@@ -177,6 +177,12 @@ cython_debug/
 _ignore/
 _output/*
 !_output/sasa_human_chothia_removal_effects.csv.gz
+!_output/entrenchment_analysis/
+_output/entrenchment_analysis/*
+!_output/entrenchment_analysis/chothia/
+_output/entrenchment_analysis/chothia/*
+!_output/entrenchment_analysis/chothia/comparison_*.csv
+!_output/entrenchment_analysis/chothia/entrenched_aa_sites_*.csv
 checkpoints/
 figures/*
 !figures/.gitkeep

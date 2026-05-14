@@ -1,0 +1,5 @@
+v_family,site,amino_acid,target_amino_acid
+IGHV4,33,S,Y
+IGHV4,33,Y,S
+IGHV4,50,R,S
+IGHV4,50,S,R
