@@ -136,16 +136,6 @@ random.seed(42)
 np.random.seed(42)
 
 
-class AntibodyChainSelector(Select):
-    """Select specific chains from PDB structure."""
-
-    def __init__(self, chain_ids):
-        self.chain_ids = chain_ids if isinstance(chain_ids, list) else [chain_ids]
-
-    def accept_chain(self, chain):
-        return chain.id in self.chain_ids
-
-
 class ChainSelector(Select):
     """Select only specific chains from PDB structure."""
 
@@ -156,27 +146,6 @@ class ChainSelector(Select):
 
     def accept_chain(self, chain):
         return chain.id in self.keep_chains
-
-
-class AntigenRemover(Select):
-    """Remove antigen chains, keeping only antibody chains."""
-
-    def __init__(self, antibody_chains, antigen_chains=None):
-        self.antibody_chains = (
-            antibody_chains if isinstance(antibody_chains, list) else [antibody_chains]
-        )
-        self.antigen_chains = (
-            antigen_chains
-            if isinstance(antigen_chains, list)
-            else ([antigen_chains] if antigen_chains else [])
-        )
-
-    def accept_chain(self, chain):
-        # If we have explicit antigen chain info, exclude those
-        if self.antigen_chains and chain.id in self.antigen_chains:
-            return False
-        # Otherwise, keep only antibody chains (original behavior as fallback)
-        return chain.id in self.antibody_chains
 
 
 class HeavyChainRangeRemover(Select):
