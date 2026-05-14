@@ -173,4 +173,4 @@ python create_combined_validation_table.py    # Table S3
 | [`light_chain_pairing_bias_with_entrenched_sites.ipynb`](light_chain_pairing_bias_with_entrenched_sites.ipynb) | Light chain pairing bias |
 | [`neutral_rates_for_interesting_sites.ipynb`](neutral_rates_for_interesting_sites.ipynb) | Neutral rates at specific sites |
 
-The [`old/`](old/) directory contains superseded notebook versions from earlier development and is not needed for reproducing the paper results.
+The [`old/`](old/) directory contains superseded analyses that are not used in the paper.
