@@ -70,9 +70,9 @@ mkdir -p ~/data
 ln -s /path/to/dasm-epistasis-data/v1 ~/data/v1
 ```
 
-### Solvent Accessible Surface Area (SASA) data
+### Solvent Accessible Surface Area (SASA) data (optional)
 
-Pre-computed SASA results are included in the repository (`_output/sasa_human_chothia_removal_effects.csv.gz`) and are loaded automatically by [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb).
+Pre-computed SASA results are included in the repository (`_output/sasa_human_chothia_removal_effects.csv.gz`) and are loaded automatically by [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb). Most users do not need to regenerate this data.
 
 If you would like to regenerate this data from scratch using [`run_sasa_analysis.py`](run_sasa_analysis.py), you will need:
 
@@ -146,7 +146,7 @@ python create_combined_validation_table.py    # Table S3
 | Table | Description | Source |
 |-------|-------------|--------|
 | Table S1 | Combined entrenched sites | [`create_combined_entrenched_sites.py`](create_combined_entrenched_sites.py) |
-| Table S2 | Hydrogen bonding at sites 73-75 | Manually created (ChimeraX) |
+| Table S2 | Hydrogen bonding at sites 73-75 | Manually created (ChimeraX); see [`site_73_structural/`](site_73_structural/) for commands and notes |
 | Table S3 | Combined validation table | [`create_combined_validation_table.py`](create_combined_validation_table.py) |
 
 ## Supporting code
@@ -163,7 +163,7 @@ python create_combined_validation_table.py    # Table S3
 | [`germline/`](germline/) | Germline reference data (OGRDB-derived); to regenerate, run [`create_germline_codon_tables.py`](create_germline_codon_tables.py) (requires [ANARCI](https://github.com/oxpig/ANARCI)) |
 | [`branch-length-regression/`](branch-length-regression/) | Linear relationship between DASM branch lengths and mutation frequency, used in the Thrifty validation |
 
-## Exploratory notebooks (not in paper)
+## Exploratory notebooks (not used in paper)
 
 | Notebook | Description |
 |----------|-------------|
@@ -173,12 +173,4 @@ python create_combined_validation_table.py    # Table S3
 | [`light_chain_pairing_bias_with_entrenched_sites.ipynb`](light_chain_pairing_bias_with_entrenched_sites.ipynb) | Light chain pairing bias |
 | [`neutral_rates_for_interesting_sites.ipynb`](neutral_rates_for_interesting_sites.ipynb) | Neutral rates at specific sites |
 
-## Archival files
-
-These files are not required for reproducing the paper results but are retained for reference.
-
-| Path | Description |
-|------|-------------|
-| [`old/`](old/) | Superseded notebook versions from earlier development |
-| [`site_73_structural/`](site_73_structural/) | Structural analysis notes and ChimeraX commands for sites 73–75 |
-| [`extracted_plots/`](extracted_plots/) | Standalone exported plots |
+The [`old/`](old/) directory contains superseded notebook versions from earlier development and is not needed for reproducing the paper results.
