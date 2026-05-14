@@ -178,7 +178,7 @@ Water: N73 ND2 → HOH (2.88 A)
 | S74 N | D72 OD1 | bb→sc | 2.92 |
 | S74 OG | D72 OD1 | sc→sc | 2.55 |
 
-**K75 — 3 H-bonds (2 bb, 1 bb-受)**
+**K75 — 3 H-bonds (2 bb→bb/sc, 1 sc→bb)**
 
 | Donor | Acceptor | Type | Distance (A) |
 |-------|----------|------|-------------|
@@ -207,7 +207,7 @@ Water: N73 N → HOH (3.01 A)
 | S74 N | D72 OD1 | bb→sc | 3.12 |
 | S74 OG | D72 OD1 | sc→sc | 2.61 |
 
-**K75 — 3 H-bonds (2 bb, 1 sc-受)**
+**K75 — 3 H-bonds (2 bb→bb/sc, 1 sc→bb)**
 
 | Donor | Acceptor | Type | Distance (A) |
 |-------|----------|------|-------------|
@@ -233,7 +233,7 @@ Note: Site 74 is Ala in this structure.
 
 **A74 — 0 H-bonds** (no sidechain hydroxyl)
 
-**K75 — 3 H-bonds (2 bb, 1 sc-受)**
+**K75 — 3 H-bonds (2 bb→bb/sc, 1 sc→bb)**
 
 | Donor | Acceptor | Type | Distance (A) |
 |-------|----------|------|-------------|
@@ -284,4 +284,4 @@ Note: Site 74 is Ala in this structure.
 | **Dominant sc stabilizer** | T75 — sc H-bonds in 4/4 | N73 — sc H-bonds in 4/4 |
 | **Reversed topology** | K73 out / T75 in (4/4) | N73 in / K75 out (4/4) |
 
-This confirms the reversed topology described in your Table S3: the entrenched residues at sites 73 and 75 swap inward/outward orientation between the two V gene families, with the inward-facing residue in each case providing the conserved sidechain H-bond network. The topology holds across all 8 examined structures.
+The entrenched residues at sites 73 and 75 exhibit reversed topology between the two V gene families, with the inward-facing residue in each case providing the conserved sidechain H-bond network. This pattern holds across all 8 examined structures.

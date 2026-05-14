@@ -153,7 +153,7 @@ D55 is in CDR-H2. The 3.51 Å distance is right at the edge of the relaxed N/O d
 
 #### 6VY4 — HENV-32 Ab + Hendra RBP (Chain H, 2.00 Å)
 
-**Note**: This structure has two heavy chains (C and H) with identical sequence. Chain C was initially analyzed but was found to have a **truncated K73 sidechain** (only atoms N, CA, C, O, CB modeled — no CG/CD/CE/NZ), preventing detection of any K73 sidechain H-bonds. Because the user prefiltered structures so that all heavy chains within each PDB are sequence-identical, chain H — which has the **complete** Lys sidechain (N, CA, C, O, CB, CG, CD, CE, NZ) — is used here as the representative copy. The chain C truncation is a local electron-density artifact, not a structural feature.
+**Note**: This structure has two heavy chains (C and H) with identical sequence. Chain C was initially analyzed but was found to have a **truncated K73 sidechain** (only atoms N, CA, C, O, CB modeled — no CG/CD/CE/NZ), preventing detection of any K73 sidechain H-bonds. Because structures were prefiltered so that all heavy chains within each PDB are sequence-identical, chain H — which has the **complete** Lys sidechain (N, CA, C, O, CB, CG, CD, CE, NZ) — is used here as the representative copy. The chain C truncation is a local electron-density artifact, not a structural feature.
 
 **K73 — 1 H-bond (1 sc → bb)**
 
@@ -347,56 +347,7 @@ Water-mediated: N73 N → HOH (2.72)
 
 ---
 
-## 6. Comparison with User's Manual Analysis (Table S3)
-
-The computational analysis broadly agrees with the user's prior manual annotation, with the following notes and discrepancies:
-
-| Manual finding | Computational status | Notes |
-|----------------|----------------------|-------|
-| IGHV3 N73 ↔ R71 sc bridge | **Confirmed (4/4)** | Both NE and NH1/NH2 contribute |
-| IGHV3 N73 → CDR-H2 backbone | **Confirmed (4/4)** | Acceptors: H52A, N52A, G52A, W53 |
-| IGHV1 T75 ↔ D72 sc | **Confirmed (4/4)** | Most stable interaction in IGHV1 |
-| IGHV1 T75 ↔ T77 sc | **Confirmed (3/4)** | Absent only in 7X29 (where T77 OG1 → T75 O bb instead) |
-| IGHV3 K75 sidechain free | **Confirmed (4/4)** | Zero sidechain H-bonds in any structure |
-| IGHV1 K73 sidechain free | Mostly confirmed | Variable; K73 sc contacts antigen in 7X29, weakly to D55 in 2NY6 |
-| **6VY4 K73 → CDR-H2 P52A backbone (manual)** | **Confirmed (chain H, 3.47 Å)** | Chain C had truncated K73 sidechain; chain H has the complete Lys and reproduces the manual finding exactly |
-
-### 6.1 The 6VY4 K73 — resolved using chain H
-
-The user's manual analysis indicated that K73 in 6VY4 makes an H-bond to the backbone of P52A (CDR-H2). The initial computational analysis on **chain C** of 6VY4 found only a backbone-backbone bond and no sidechain bond to CDR-H2.
-
-Investigation revealed that **the K73 sidechain in 6VY4 chain C is truncated at Cβ in the deposited coordinates**:
-
-```
-atom /C:74@N    Npl
-atom /C:74@CA   C3
-atom /C:74@C    C2
-atom /C:74@O    O2
-atom /C:74@CB   C3
-(no CG, CD, CE, NZ)
-```
-
-The CG, CD, CE, and NZ atoms are absent — most likely because the electron density for the Lys sidechain was too weak to model. ChimeraX therefore cannot detect any sidechain H-bond involving K73 NZ in chain C, regardless of whether one would actually exist in a fully built model.
-
-In contrast, **chain H of the same 6VY4 structure has the complete Lys sidechain modeled**:
-
-```
-atom /H:74@N, CA, C, O, CB, CG, CD, CE, NZ   (all present)
-```
-
-**Resolution**: Because the structure was prefiltered to PDBs with sequence-identical heavy chains, chain H is a valid representative copy. Re-running `hbonds #1/H:74-76 restrict any` on chain H returns:
-
-```
-/H LYS 74 NZ   /H PRO 53 O    3.47 Å   (= K73 NZ → CDR-H2 P backbone)
-```
-
-This **exactly confirms** the manual annotation: K73 sidechain donates to a CDR-H2 proline backbone carbonyl. The chain-C result was therefore a false negative caused by incomplete modeling at low local electron density, and chain H is now used as the canonical 6VY4 result throughout this report.
-
-This is an important lesson for any computational H-bond analysis: missing sidechain atoms in PDB models (common at medium-low resolution) will produce false negatives. Always verify atom completeness for residues of interest before drawing conclusions.
-
----
-
-## 7. Limitations
+## 6. Limitations
 
 - **Small sample size** (n = 4 per family). The patterns are remarkably consistent but the statistical confidence at any individual site is limited.
 - **Default H-bond geometry cutoffs.** ChimeraX defaults relax idealized N/O geometry by 0.4 Å and 20°, giving an effective absolute D···A distance limit of ~3.5 Å. A few interactions sit right at this relaxed limit (e.g., 2NY6 K73 NZ → D55 OD2 at 3.51 Å) and would no longer be called bonds under stricter parameters.
@@ -406,18 +357,9 @@ This is an important lesson for any computational H-bond analysis: missing sidec
 
 ---
 
-## 8. Files in this analysis
+## 7. Files in this analysis
 
 - `complete_structural_analysis.md` — this file
-- `structural_analysis_results.md` — earlier per-structure results (with user annotations)
+- `structural_analysis_results.md` — per-structure results with annotations
 - `summary_tables.md` — three concise summary tables
-- `updated_methods.tex` — LaTeX methods section for manuscript
 - `chimerax_commands.md` — full ChimeraX commands for the 6ULE and 8G3Z visualizations
-
----
-
-## 9. Suggested next steps
-
-1. **Resolve the 6VY4 K73 sidechain.** Either re-analyze chain H or rebuild the chain C sidechain, then re-run the `hbonds` command to determine whether K73 in 6VY4 actually forms a sidechain H-bond to CDR-H2. This is the only point where the computational analysis fails to confirm the manual annotation.
-2. **Optionally expand the structure set** to 6–8 structures per family for stronger statistical claims about the conservation rate of each interaction.
-3. **Quantify the energetic contribution** of the T75–D72 (IGHV1) and N73–R71 (IGHV3) sidechain interactions using a method such as FoldX or Rosetta ΔΔG calculations on alanine mutants, to test whether their loss would explain the observed entrenchment.
