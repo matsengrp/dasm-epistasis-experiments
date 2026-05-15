@@ -271,9 +271,7 @@ def build_count_sweep_figure(
     fig.tight_layout()
 
     pdf_path = output_stem.with_suffix(".pdf")
-    png_path = output_stem.with_suffix(".png")
     fig.savefig(pdf_path, dpi=300, bbox_inches="tight")
-    fig.savefig(png_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {pdf_path.relative_to(REPO_ROOT)}")
 
@@ -373,9 +371,7 @@ def build_sensitivity_figure(
     )
 
     pdf_path = output_stem.with_suffix(".pdf")
-    png_path = output_stem.with_suffix(".png")
     fig.savefig(pdf_path, dpi=300, bbox_inches="tight")
-    fig.savefig(png_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"wrote {pdf_path.relative_to(REPO_ROOT)}")
 

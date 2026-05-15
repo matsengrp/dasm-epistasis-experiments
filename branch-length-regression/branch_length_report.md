@@ -2,9 +2,9 @@
 
 ## Summary
 
-We find a remarkably linear relationship between raw mutation frequency and DASM-inferred branch length, with $R^2 = 0.974$. The fitted relationship is:
+We find a remarkably linear relationship between raw mutation frequency and DASM-inferred branch length, with $R^2 = 0.969$. The fitted relationship is:
 
-$$t_{\text{DASM}} = 1.76 \cdot f_{\text{mut}} - 0.001$$
+$$t_{\text{DASM}} = 1.60 \cdot f_{\text{mut}} + 0.001$$
 
 where $f_{\text{mut}}$ is the fraction of nucleotide sites that differ between parent and child sequences.
 
@@ -51,11 +51,11 @@ Selection factors $f_{j,a} < 1$ on average (most mutations are deleterious). Thi
 
 $$P(\text{mutation}) \propto t \cdot \lambda \cdot f$$
 
-To explain $N$ observed mutations when $\langle f \rangle < 1$, the model requires a longer branch length $t$ to compensate. The fitted slope of 1.76 implies:
+To explain $N$ observed mutations when $\langle f \rangle < 1$, the model requires a longer branch length $t$ to compensate. The fitted slope of 1.60 implies:
 
-$$\langle \lambda \rangle \cdot \langle f \rangle \approx \frac{1}{1.76} \approx 0.57$$
+$$\langle \lambda \rangle \cdot \langle f \rangle \approx \frac{1}{1.60} \approx 0.62$$
 
-This makes biological sense: observed mutations are approximately 57% as likely as neutral expectation due to purifying selection.
+This makes biological sense: observed mutations are approximately 62% as likely as neutral expectation due to purifying selection.
 
 ### Complexity That Averages Out
 
@@ -76,10 +76,10 @@ Despite the model's complexity—site-specific rates $\lambda_i$, codon table de
 
 | Parameter | Value |
 |-----------|-------|
-| Slope | 1.7578 |
-| Intercept | -0.0009 |
-| $R^2$ | 0.9738 |
-| RMSE | 0.0065 |
+| Slope | 1.6040 |
+| Intercept | 0.0009 |
+| $R^2$ | 0.9693 |
+| RMSE | 0.006461 |
 
 The near-zero intercept confirms the relationship passes through the origin as expected (zero mutations $\Rightarrow$ zero branch length).
 
@@ -89,30 +89,30 @@ Residuals by mutation frequency decile show minimal systematic pattern:
 
 | Decile | Mean Residual |
 |--------|---------------|
-| 0 (lowest) | +0.0007 |
-| 1 | +0.0007 |
-| 2 | +0.0007 |
-| 3 | +0.0006 |
-| 4 | +0.0002 |
-| 5 | -0.0001 |
-| 6 | -0.0005 |
-| 7 | -0.0012 |
-| 8 | -0.0016 |
-| 9 (highest) | +0.0005 |
+| 0 (lowest) | -0.000548 |
+| 1 | -0.000525 |
+| 2 | -0.000562 |
+| 3 | -0.000476 |
+| 4 | -0.000266 |
+| 5 | +0.000083 |
+| 6 | +0.000575 |
+| 7 | +0.000934 |
+| 8 | +0.001163 |
+| 9 (highest) | -0.000346 |
 
-The slight negative residuals at intermediate-high mutation frequencies may reflect saturation effects (multiple hits at the same site) not fully captured by the linear approximation.
+The residuals show a mild trend from negative (low mutation frequency) to positive (high mutation frequency), suggesting the linear fit slightly underestimates branch lengths for low-mutation sequences and overestimates for high-mutation ones. The reversal at the highest decile may reflect saturation effects. All residuals remain very small in magnitude.
 
 ## Figure
 
 ![Mutation Frequency vs DASM Branch Length](branch_length_regression.png)
 
-The plot shows the relationship between raw mutation frequency (x-axis) and DASM-inferred branch length (y-axis) for 742,377 training pairs. Axes are trimmed to the 99th percentile for clarity. The red line shows the linear fit with $R^2 = 0.974$.
+The plot shows the relationship between raw mutation frequency (x-axis) and DASM-inferred branch length (y-axis) for 742,377 training pairs. Axes are trimmed to the 99th percentile for clarity. The red line shows the linear fit with $R^2 = 0.969$.
 
 ## Conclusion
 
 The strong linear relationship between mutation frequency and DASM branch length provides a useful rule of thumb:
 
-$$t_{\text{DASM}} \approx 1.76 \times f_{\text{mut}}$$
+$$t_{\text{DASM}} \approx 1.60 \times f_{\text{mut}}$$
 
 This relationship emerges from the model's structure despite considerable underlying complexity, and reflects the combined effect of site-specific mutation rates and purifying selection operating on antibody sequences.
 
@@ -120,7 +120,7 @@ This relationship emerges from the model's structure despite considerable underl
 
 ## Appendix: Code
 
-Full source: `docs/branch_length_regression.py`
+Full source: `branch-length-regression/branch_length_regression.py`
 
 ### Computing Mutation Frequency
 
@@ -156,8 +156,8 @@ train_df["dasm_branch_length"] = train_bls["branch_length"].values
 from scipy import stats
 
 result = stats.linregress(df["mut_freq"], df["dasm_branch_length"])
-# result.slope = 1.7578
-# result.intercept = -0.0009
+# result.slope = 1.6040
+# result.intercept = 0.0009
 ```
 
 ### Residual Analysis by Decile

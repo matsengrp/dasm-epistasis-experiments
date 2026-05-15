@@ -175,8 +175,18 @@ cython_debug/
 
 #custom
 _ignore/
-_output/
+_output/*
+!_output/sasa_human_chothia_removal_effects.csv.gz
+!_output/entrenchment_analysis/
+_output/entrenchment_analysis/*
+!_output/entrenchment_analysis/chothia/
+_output/entrenchment_analysis/chothia/*
+!_output/entrenchment_analysis/chothia/comparison_*.csv
+!_output/entrenchment_analysis/chothia/entrenched_aa_sites_*.csv
 checkpoints/
-figures/
+figures/*
+!figures/.gitkeep
 germline/ogrdb_human_*
 dnsmex/local_config.py
+trained_models/
+DATA_DIR/

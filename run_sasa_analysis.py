@@ -121,11 +121,12 @@ from Bio.PDB.DSSP import DSSP
 from Bio.PDB.Polypeptide import PPBuilder
 
 # Constants - File paths and directories
-SABDAB_ABID_INFO_PATH = (
-    "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_2024-01-26_abid_info.tsv"
+SCRIPT_DIR = Path(__file__).resolve().parent
+SABDAB_ABID_INFO_PATH = str(
+    SCRIPT_DIR / "data/sabdab/sabdab_summary_2024-01-26_abid_info.tsv"
 )
-SABDAB_CHAIN_INFO_PATH = (
-    "/fh/fast/matsen_e/shared/sabdab_pb/sabdab_summary_all_2024-01-26.tsv"
+SABDAB_CHAIN_INFO_PATH = str(
+    SCRIPT_DIR / "data/sabdab/sabdab_summary_all_2024-01-26.tsv"
 )
 LIBCIFPP_DATA_DIR = "/home/nharel/miniforge3/envs/netam_env/share/libcifpp"
 PDB_BASE_DIR = "/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db"
@@ -133,16 +134,6 @@ PDB_BASE_DIR = "/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db"
 # Set random seed for reproducibility
 random.seed(42)
 np.random.seed(42)
-
-
-class AntibodyChainSelector(Select):
-    """Select specific chains from PDB structure."""
-
-    def __init__(self, chain_ids):
-        self.chain_ids = chain_ids if isinstance(chain_ids, list) else [chain_ids]
-
-    def accept_chain(self, chain):
-        return chain.id in self.chain_ids
 
 
 class ChainSelector(Select):
@@ -155,27 +146,6 @@ class ChainSelector(Select):
 
     def accept_chain(self, chain):
         return chain.id in self.keep_chains
-
-
-class AntigenRemover(Select):
-    """Remove antigen chains, keeping only antibody chains."""
-
-    def __init__(self, antibody_chains, antigen_chains=None):
-        self.antibody_chains = (
-            antibody_chains if isinstance(antibody_chains, list) else [antibody_chains]
-        )
-        self.antigen_chains = (
-            antigen_chains
-            if isinstance(antigen_chains, list)
-            else ([antigen_chains] if antigen_chains else [])
-        )
-
-    def accept_chain(self, chain):
-        # If we have explicit antigen chain info, exclude those
-        if self.antigen_chains and chain.id in self.antigen_chains:
-            return False
-        # Otherwise, keep only antibody chains (original behavior as fallback)
-        return chain.id in self.antibody_chains
 
 
 class HeavyChainRangeRemover(Select):
