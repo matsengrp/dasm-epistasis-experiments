@@ -21,10 +21,13 @@ Filters by species if `--organism` specified. Cheapest and most selective filter
 ### Stage 3: Chain Completeness Filter
 Requires heavy + light + antigen chain(s) for complete analysis. Fast metadata check.
 
-### Stage 4: V/J Gene & Sequence Consistency Filter
+### Stage 4: Heavy-Chain-Only Antibody Filter
+Excludes PDBs where the "light chain" is actually a heavy chain (HCAbs, nanobodies, VHH fragments). Detected by ANARCI assigning an IGH* V gene to the light chain.
+
+### Stage 5: V/J Gene & Sequence Consistency Filter
 Ensures identical V/J genes (`va`, `ja`, `vb`, `jb`) and chain sequences (`chainseq_a`, `chainseq_b`) within each PDB. More expensive groupby operations.
 
-### Stage 5: File Limit
+### Stage 6: File Limit
 Applies `--max-files` limit if specified.
 
 ## SASA Calculation: Three-Scenario Analysis
@@ -123,7 +126,7 @@ from Bio.PDB.Polypeptide import PPBuilder
 # Constants - File paths and directories
 SCRIPT_DIR = Path(__file__).resolve().parent
 SABDAB_ABID_INFO_PATH = str(
-    SCRIPT_DIR / "data/sabdab/sabdab_summary_2024-01-26_abid_info.tsv"
+    SCRIPT_DIR / "data/sabdab/sabdab_anarci_annotations.tsv"
 )
 SABDAB_CHAIN_INFO_PATH = str(
     SCRIPT_DIR / "data/sabdab/sabdab_summary_all_2024-01-26.tsv"
@@ -233,10 +236,22 @@ class StructureFilter:
             files_with_complete_chains,
         )
 
-        # Stage 4: V/J consistency filter - more expensive groupby operations
+        # Stage 4: Heavy-chain-only antibody filter - exclude PDBs where
+        # the "light chain" is actually a heavy chain (nanobodies, HCAbs, VHH)
+        hcab_ids = self.metadata.get_heavy_chain_only_antibody_pdbs()
+        files_no_hcabs = [f for f in files_with_complete_chains
+                          if f.stem.upper() not in {pid.upper() for pid in hcab_ids}]
+        self._record_stage(
+            "heavy_chain_only_filtered",
+            len(files_no_hcabs),
+            files_no_hcabs,
+            note=f"{len(hcab_ids)} heavy-chain-only antibody PDBs excluded"
+        )
+
+        # Stage 5: V/J consistency filter - more expensive groupby operations
         consistent_ids, kept, removed = self.metadata.get_pdbs_with_consistent_vj_genes()
         files_with_consistent_vj = self._filter_by_pdb_ids(
-            files_with_complete_chains, consistent_ids
+            files_no_hcabs, consistent_ids
         )
         self._record_stage(
             "vj_consistent",
@@ -245,7 +260,7 @@ class StructureFilter:
             note=f"{kept} kept, {removed} removed"
         )
 
-        # Stage 5: Apply max_files limit
+        # Stage 6: Apply max_files limit
         if max_files:
             final_files = files_with_consistent_vj[:max_files]
             self._record_stage("max_files_limited", len(final_files), final_files)
@@ -461,6 +476,28 @@ class ProteinMetadataExtractor:
         }
 
         return metadata
+
+    def get_heavy_chain_only_antibody_pdbs(self):
+        """Get PDB IDs where the "light chain" is actually a heavy chain.
+
+        This catches heavy-chain-only antibodies (HCAbs), nanobodies, and VHH
+        fragments, where SAbDab lists an Lchain that is a second copy of the
+        heavy chain. Detected by ANARCI assigning an IGH* V gene to the light
+        chain (va column).
+        """
+        if self.abid_df is None or len(self.abid_df) == 0:
+            return set()
+
+        hcab_ids = set()
+        for pdb_id, group in self.abid_df.groupby("pdbid"):
+            va_values = group["va"].dropna() if "va" in group.columns else pd.Series()
+            if any(str(v).startswith("IGH") for v in va_values):
+                hcab_ids.add(pdb_id)
+
+        if self.verbose:
+            print(f"Heavy-chain-only antibody filter: {len(hcab_ids)} PDBs identified")
+
+        return hcab_ids
 
     def get_pdbs_with_consistent_vj_genes(self):
         """Get PDB IDs where all entries have the same V and J genes and chain sequences."""
