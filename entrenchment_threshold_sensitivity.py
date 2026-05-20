@@ -90,7 +90,7 @@ def draw_scatter_panel(
             linewidth=0.5,
         )
 
-    ax.set_ylabel("Sum of log\nselection factors", fontsize=10)
+    ax.set_ylabel("Sum of median\nlog selection factors", fontsize=10)
     ax.grid(True, alpha=0.4, linewidth=0.8)
     ax.axhline(0, color="gray", linestyle=":", linewidth=0.8, alpha=0.6)
 
