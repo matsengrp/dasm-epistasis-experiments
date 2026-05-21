@@ -72,13 +72,34 @@ ln -s /path/to/dasm-epistasis-data/v1 ~/data/v1
 
 ### Solvent Accessible Surface Area (SASA) data (optional)
 
-Pre-computed SASA results are included in the repository (`_output/sasa_human_chothia_removal_effects.csv.gz`) and are loaded automatically by [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb). Most users do not need to regenerate this data.
+Pre-computed SASA results are included in the repository (`_output/sasa_human_chothia_anarci.csv.gz`) and are loaded automatically by [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb). Most users do not need to regenerate this data.
 
-If you would like to regenerate this data from scratch using [`run_sasa_analysis.py`](run_sasa_analysis.py), you will need:
+If you would like to regenerate this data from scratch, there are two steps:
 
-- **SAbDab summary tables**: included in [`data/sabdab/`](data/sabdab/) (2024-01-26 snapshot). The V/J gene annotations in the abid_info file were generated via BLAST (https://github.com/phbradley/ADAPT), not from SAbDab directly.
+#### Step 1: Generate V/J gene annotations with ANARCI
+
+[`annotate_sabdab_anarci.py`](annotate_sabdab_anarci.py) assigns V/J germline genes to SAbDab structures using [ANARCI](https://github.com/oxpig/ANARCI). It reads the SAbDab bulk download TSV, extracts heavy and light chain sequences from PDB files using BioPython, and runs ANARCI with species-constrained germline assignment.
+
+```bash
+pip install anarci
+python annotate_sabdab_anarci.py --output data/sabdab/sabdab_anarci_annotations.tsv
+```
+
+Pre-computed annotations are included in [`data/sabdab/sabdab_anarci_annotations.tsv`](data/sabdab/sabdab_anarci_annotations.tsv), so this step can be skipped unless you want to regenerate them.
+
+#### Step 2: Run the SASA analysis pipeline
+
+[`run_sasa_analysis.py`](run_sasa_analysis.py) computes per-residue solvent accessibility across six structural scenarios (full complex, antibody alone, heavy chain alone, etc.) and derives burial effects from each binding partner. It applies a 6-stage filtering pipeline: file discovery, organism filtering (exact match), chain completeness, heavy-chain-only antibody exclusion, V/J gene consistency, and optional file limits.
+
+You will need:
+
+- **SAbDab summary tables and ANARCI annotations**: included in [`data/sabdab/`](data/sabdab/) (2024-01-26 snapshot)
 - **PDB structure files**: download from [RCSB PDB](https://www.rcsb.org/) or via SAbDab's bulk download. Update `PDB_BASE_DIR` in [`run_sasa_analysis.py`](run_sasa_analysis.py) to point to your local PDB directory.
 - **DSSP**: install via `conda install -c conda-forge dssp`
+
+```bash
+python run_sasa_analysis.py --organism "homo sapiens"
+```
 
 ## Reproducing the analysis
 
@@ -94,7 +115,7 @@ The remaining notebooks can then be run in any order:
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
 - [`within_family_validation.ipynb`](within_family_validation.ipynb) — Validates that pooling V gene alleles within a family does not create false entrenchment calls (Fig S5)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
-- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14)
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
 
 ### Step 2: Aggregate results and create tables
 
@@ -156,6 +177,7 @@ python create_combined_validation_table.py    # Table S3
 | [`utils.py`](utils.py) | Core utilities imported by most notebooks |
 | [`rates_analysis_util.py`](rates_analysis_util.py) | Rate analysis utilities for validation notebooks |
 | [`sasa_plotting.py`](sasa_plotting.py) | RSA/SASA plotting functions |
+| [`annotate_sabdab_anarci.py`](annotate_sabdab_anarci.py) | V/J gene annotation of SAbDab structures using ANARCI |
 | [`run_sasa_analysis.py`](run_sasa_analysis.py) | SASA data generation from PDB structures |
 | [`create_germline_codon_tables.py`](create_germline_codon_tables.py) | Generates germline reference data |
 | [`site9_discrepancy_analysis.ipynb`](site9_discrepancy_analysis.ipynb) | Investigation of site 9 validation discrepancy |

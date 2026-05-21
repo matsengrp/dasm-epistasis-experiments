@@ -1510,8 +1510,15 @@ def _plot_entrenchment_boxplot(ax, filtered, sorted_sites, site_colors, y_var, y
     add_cdr_shading(ax, sorted_sites, numbering_scheme=numbering_scheme)
 
 
-def _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam):
-    """Add shared entrenchment legend to figure."""
+def _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam, position="right"):
+    """Add shared entrenchment legend to figure.
+
+    Parameters
+    ----------
+    position : str
+        "right" for vertical legend on the right (default),
+        "bottom" for horizontal legend below the figure.
+    """
     legend_handles = []
     legend_labels = []
     entrenched_sorted = sort_antibody_sites(
@@ -1531,6 +1538,7 @@ def _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam
         )
         legend_labels.append(f"Site {site}")
 
+    # Add spacer between entrenched sites and "Not entrenched"
     legend_handles.append(plt.Line2D([0], [0], marker="", color="w", linestyle=""))
     legend_labels.append("")
 
@@ -1547,16 +1555,29 @@ def _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam
     )
     legend_labels.append("Not entrenched")
 
-    fig.legend(
-        legend_handles,
-        legend_labels,
-        bbox_to_anchor=(1.02, 0.5),
-        loc="center left",
-        borderaxespad=0.0,
-        title="Entrenched Sites",
-        fontsize=12,
-        title_fontsize=14,
-    )
+    if position == "bottom":
+        fig.legend(
+            legend_handles,
+            legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.04),
+            ncol=len(legend_labels),
+            fontsize=11,
+            title="Entrenched Sites",
+            title_fontsize=13,
+            frameon=True,
+        )
+    else:
+        fig.legend(
+            legend_handles,
+            legend_labels,
+            bbox_to_anchor=(1.02, 0.5),
+            loc="center left",
+            borderaxespad=0.0,
+            title="Entrenched Sites",
+            fontsize=12,
+            title_fontsize=14,
+        )
 
 
 def plot_rsa_by_entrenchment(
@@ -1619,7 +1640,7 @@ def plot_rsa_by_entrenchment(
         )
 
     axes[-1].set_xlabel("Site", fontsize=14)
-    _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam)
+    _add_entrenchment_legend(fig, sorted_sites, site_colors, entrenched_for_vfam, position="bottom")
 
     plt.tight_layout()
 

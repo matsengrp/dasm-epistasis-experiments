@@ -174,9 +174,13 @@ cython_debug/
 .pypirc
 
 #custom
-_ignore/
+_ignore/*
+!_ignore/.gitkeep
 _output/*
 !_output/sasa_human_chothia_removal_effects.csv.gz
+!_output/sasa_human_chothia_anarci.csv.gz
+!_output/combined_entrenched_sites.csv
+!_output/combined_validation_table_entrenched_for_paper.csv
 !_output/entrenchment_analysis/
 _output/entrenchment_analysis/*
 !_output/entrenchment_analysis/chothia/
@@ -187,6 +191,7 @@ checkpoints/
 figures/*
 !figures/.gitkeep
 germline/ogrdb_human_*
+!germline/ogrdb_human_IGH_gapped.fasta
 dnsmex/local_config.py
 trained_models/
 DATA_DIR/
