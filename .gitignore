@@ -174,8 +174,7 @@ cython_debug/
 .pypirc
 
 #custom
-_ignore/*
-!_ignore/.gitkeep
+_ignore/
 _output/*
 !_output/sasa_human_chothia_removal_effects.csv.gz
 !_output/sasa_human_chothia_anarci.csv.gz
