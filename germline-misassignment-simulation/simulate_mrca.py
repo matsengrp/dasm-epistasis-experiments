@@ -11,6 +11,12 @@ Usage:
 """
 
 import argparse
+import os
+import sys
+
+# Add repo root to path so dnsmex can be imported
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 import pandas as pd
 import torch
 from tqdm.auto import tqdm

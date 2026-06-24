@@ -11,7 +11,12 @@ v_families_entrenchment_dasm.ipynb and produces comparison plots.
 
 Usage:
     cd dasm-epistasis-experiments
+
+    # Confusable-pair mode (original):
     python exclusion_robustness_test.py
+
+    # Exclude specific V genes (all alleles):
+    python exclusion_robustness_test.py --exclude-genes IGHV1-69
 """
 
 import matplotlib.pyplot as plt
@@ -147,7 +152,7 @@ def run_entrenchment_analysis(aa_df, v_family):
 
 
 def plot_entrenchment_comparison(full_compare, excl_compare, v_family,
-                                 germline_codons_df):
+                                 germline_codons_df, output_dir=OUTPUT_DIR):
     """Plot entrenchment scatter: full vs excluded, side by side."""
     family_data = germline_codons_df[germline_codons_df.v_family == v_family]
     all_sites = sorted(set(family_data["site"].unique()))
@@ -191,12 +196,12 @@ def plot_entrenchment_comparison(full_compare, excl_compare, v_family,
     axes[1].set_xlabel("Site position", fontsize=13)
 
     plt.tight_layout()
-    fig.savefig(f"{OUTPUT_DIR}/entrenchment_scatter_{v_family}.pdf",
+    fig.savefig(f"{output_dir}/entrenchment_scatter_{v_family}.pdf",
                 dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
-def plot_reciprocal_comparison(full_compare, excl_compare, v_family):
+def plot_reciprocal_comparison(full_compare, excl_compare, v_family, output_dir=OUTPUT_DIR):
     """Plot reciprocal selection factors (A→B vs B→A): full vs excluded."""
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -233,17 +238,28 @@ def plot_reciprocal_comparison(full_compare, excl_compare, v_family):
         ax.legend(loc="upper left", fontsize=10)
 
     plt.tight_layout()
-    fig.savefig(f"{OUTPUT_DIR}/reciprocal_scatter_{v_family}.pdf",
+    fig.savefig(f"{output_dir}/reciprocal_scatter_{v_family}.pdf",
                 dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--exclude-genes", nargs="+", default=None,
+        help="V gene names to exclude (all alleles). E.g. --exclude-genes IGHV1-69. "
+             "When set, skips confusable-pair computation and excludes these genes directly."
+    )
+    return parser.parse_args()
+
+
 def main():
     import os
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    print(f"Computing at-risk alleles (threshold <= {CONFUSABLE_THRESHOLD} nt)...")
-    at_risk_per_site, at_risk_per_family = compute_at_risk_alleles(CONFUSABLE_THRESHOLD)
+    args = parse_args()
+    exclude_genes = args.exclude_genes
 
     print("\nLoading data (this takes a minute)...")
     _, _, aa_df = load_and_process_dasm_data(
@@ -254,9 +270,43 @@ def main():
 
     germline_codons_df = pd.read_csv(GERMLINE_CODONS_PATH, dtype={"site": str})
 
-    print(f"\n{'=' * 90}")
-    print(f"EXCLUSION ROBUSTNESS TEST (threshold <= {CONFUSABLE_THRESHOLD} nt)")
-    print(f"{'=' * 90}")
+    if exclude_genes is not None:
+        # Exclude specific genes mode
+        label = "genes_" + "+".join(exclude_genes)
+        output_dir = f"{OUTPUT_DIR}/{label}"
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Find all alleles matching the gene names
+        all_alleles = aa_df["v_gene"].unique()
+        excluded_alleles = {a for a in all_alleles
+                            if any(a.startswith(g + "*") or a == g for g in exclude_genes)}
+
+        print(f"\n{'=' * 90}")
+        print(f"EXCLUSION ROBUSTNESS TEST (excluding genes: {', '.join(exclude_genes)})")
+        print(f"  Matched alleles to exclude: {len(excluded_alleles)}")
+        print(f"{'=' * 90}")
+
+        # Build per-family exclusion sets
+        at_risk_per_family = {}
+        for allele in excluded_alleles:
+            fam = allele.split("-")[0]  # e.g. IGHV1-69*01 -> IGHV1
+            # Actually need the v_family from aa_df
+            rows = aa_df[aa_df["v_gene"] == allele]
+            if len(rows) > 0:
+                fam = rows.iloc[0]["v_family"]
+                at_risk_per_family.setdefault(fam, set()).add(allele)
+    else:
+        # Original confusable-pair mode
+        output_dir = OUTPUT_DIR
+        os.makedirs(output_dir, exist_ok=True)
+
+        label = f"{CONFUSABLE_THRESHOLD}nt"
+        print(f"Computing at-risk alleles (threshold <= {CONFUSABLE_THRESHOLD} nt)...")
+        _, at_risk_per_family = compute_at_risk_alleles(CONFUSABLE_THRESHOLD)
+
+        print(f"\n{'=' * 90}")
+        print(f"EXCLUSION ROBUSTNESS TEST (threshold <= {CONFUSABLE_THRESHOLD} nt)")
+        print(f"{'=' * 90}")
 
     all_results = []
 
@@ -340,9 +390,10 @@ def main():
 
         # Generate plots
         plot_entrenchment_comparison(full_compare, excl_compare, v_family,
-                                     germline_codons_df)
-        plot_reciprocal_comparison(full_compare, excl_compare, v_family)
-        print(f"  Plots saved to {OUTPUT_DIR}/")
+                                     germline_codons_df, output_dir=output_dir)
+        plot_reciprocal_comparison(full_compare, excl_compare, v_family,
+                                   output_dir=output_dir)
+        print(f"  Plots saved to {output_dir}/")
 
     # Summary
     results_df = pd.DataFrame(all_results)
@@ -358,7 +409,7 @@ def main():
     print(f"  WEAKENED (no longer entrenched):  {weakened} ({100*weakened/total:.0f}%)")
     print(f"  DROPPED (insufficient data):      {dropped} ({100*dropped/total:.0f}%)")
 
-    output_path = f"{OUTPUT_DIR}/exclusion_robustness_test_{CONFUSABLE_THRESHOLD}nt.csv"
+    output_path = f"{output_dir}/exclusion_robustness_test_{label}.csv"
     results_df.to_csv(output_path, index=False)
     print(f"\nResults saved to {output_path}")
 
