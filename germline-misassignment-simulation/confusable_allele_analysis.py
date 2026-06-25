@@ -18,7 +18,7 @@ Analysis:
 4. In the Rodriguez dataset, compute what % of sequences use at-risk V genes
 
 Usage:
-    python germline_misassignment_analysis.py
+    python confusable_allele_analysis.py
 """
 
 from itertools import combinations

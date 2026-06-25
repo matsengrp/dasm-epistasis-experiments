@@ -13,10 +13,10 @@ Usage:
     cd dasm-epistasis-experiments
 
     # Confusable-pair mode (original):
-    python exclusion_robustness_test.py
+    python entrenchment_exclusion_robustness_test.py
 
     # Exclude specific V genes (all alleles):
-    python exclusion_robustness_test.py --exclude-genes IGHV1-69
+    python entrenchment_exclusion_robustness_test.py --exclude-genes IGHV1-69
 """
 
 import matplotlib.pyplot as plt
