@@ -71,6 +71,7 @@ dataset_dict = {
     "v1rodriguezPrimersWithN": "DATA_DIR/v3/rodriguez-airr-seq-primer-prod-NoWinCheck-UnmutInv_igh_pcp_2024-04-01_MASKED_NI_no-naive_DXSMVALID.csv.gz",
     "v1rodriguez": "DATA_DIR/v3/rodriguez-airr-seq-race-prod-NoWinCheck_igh_pcp_2024-11-12_MASKED_NI_noN_no-naive.csv.gz",
     "v1rodriguezCC": "DATA_DIR/v3/rodriguez-airr-seq-race-prod-NoWinCheck_igh_pcp_2024-11-12_MASKED_NI_ConsCys_no-naive_DXSMVALID.csv.gz",
+    "v1rodriguezWithNaive": "DATA_DIR/v3/rodriguez-airr-seq-race-prod-NoWinCheck_igh_pcp_2024-11-12_MASKED_NI.csv.gz",
     "v1rodriguezWithN": "DATA_DIR/v3/rodriguez-airr-seq-race-prod-NoWinCheck_igh_pcp_2024-11-12_MASKED_NI_no-naive_DXSMVALID.csv.gz",
     "v1flairr": "DATA_DIR/v3/ford-flairr-seq-prod-NoWinCheck-UnmutInv_igh_pcp_2024-04-01_MASKED_NI_noN_no-naive.csv.gz",
     "v1vanwinkleigkTest": "DATA_DIR/v3/v3convert_vanwinkle-170-igk_pcp_2025-02-22_MASKED_NI_test_DXSMVALID_no-naive.csv.gz",

@@ -105,17 +105,17 @@ python run_sasa_analysis.py --organism "homo sapiens"
 
 ### Step 1: Run main analysis notebooks
 
-Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S12, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
+Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S11, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
 
 The remaining notebooks can then be run in any order:
 
-- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy at entrenched vs. non-entrenched sites (Figs 2C, S11)
-- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Figs 4, S9)
-- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S10, S13)
+- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy at entrenched vs. non-entrenched sites (Figs 2C, S10)
+- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Fig 4)
+- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12)
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
 - [`within_family_validation.ipynb`](within_family_validation.ipynb) — Validates that pooling V gene alleles within a family does not create false entrenchment calls (Fig S5)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
-- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S13). **Note:** This notebook loads a large dataframe so run with enough memory.
 
 ### Step 2: Aggregate results and create supplementary data files
 
@@ -155,12 +155,12 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 | Fig S6 | Within-family entrenchment for IGHV4 | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
 | Fig S7 | RSA at IGHV1 within-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S8 | RSA grid by site and amino acid | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S9 | Reciprocal selection factors at within-family entrenched sites | [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) |
-| Fig S10 | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S11 | Shannon entropy (3-category entrenchment) | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
-| Fig S12 | Between-family entrenchment for additional V-family pairs | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
-| Fig S13 | Backbone angles at site 9 | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S14 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
+| Fig S9 | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
+| Fig S10 | Shannon entropy (3-category entrenchment) | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
+| Fig S11 | Between-family entrenchment for additional V-family pairs | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
+| Fig S12 | Backbone angles at site 9 | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
+| Fig S13 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
+| Fig S14 | Germline allele misassignment simulation | [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) |
 | Table S1 | Hydrogen bonding at sites 73–75 | Manually created (ChimeraX); see [`site_73_structural/`](site_73_structural/) for commands and notes |
 
 ### Supplementary data files
