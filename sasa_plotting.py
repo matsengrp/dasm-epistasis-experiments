@@ -1268,6 +1268,7 @@ def plot_ramachandran_by_site_range(
     save_fig=False,
     output_dir="figures",
     germline_filter=None,
+    require_unmutated_range=False,
 ):
     """
     Create Ramachandran plots for a range of sites centered around center_site.
@@ -1295,11 +1296,27 @@ def plot_ramachandran_by_site_range(
         Only pdb_ids that match at least one filter condition (having the
         specified germline amino acid at the given site for that v_family)
         are included. Plots still only show germline residues.
+    require_unmutated_range : bool
+        If True, keep only pdb_ids that are unmutated across every plotted
+        site, i.e. all sites in the range are present and germline. This is
+        stricter than germline_filter, which constrains a single site: it
+        removes structures carrying a somatic mutation anywhere in the window,
+        so the plotted conformations reflect germline backgrounds only.
 
     Returns
     -------
     fig, axes : matplotlib figure and axes
     """
+
+    # Prepare site range
+    center_site_int = int(center_site)
+    sites_to_plot = [
+        str(i)
+        for i in range(
+            center_site_int - site_range // 2, center_site_int + site_range // 2 + 1
+        )
+    ]
+    sites_to_plot = sort_antibody_sites(sites_to_plot)
 
     # Apply germline_filter: keep only pdb_ids matching at least one condition
     if germline_filter is not None:
@@ -1314,15 +1331,28 @@ def plot_ramachandran_by_site_range(
             matching_pdb_ids.update(df.loc[mask, "pdb_id"].unique())
         df = df[df.pdb_id.isin(matching_pdb_ids)]
 
-    # Prepare site range
-    center_site_int = int(center_site)
-    sites_to_plot = [
-        str(i)
-        for i in range(
-            center_site_int - site_range // 2, center_site_int + site_range // 2 + 1
-        )
-    ]
-    sites_to_plot = sort_antibody_sites(sites_to_plot)
+    # Keep only pdb_ids that are unmutated across the whole plotted window
+    if require_unmutated_range:
+        window = df[df.site.isin(sites_to_plot)]
+        per_pdb = window.groupby("pdb_id").is_germline.agg(["sum", "count"])
+        unmutated = per_pdb[
+            (per_pdb["count"] == len(sites_to_plot))
+            & (per_pdb["sum"] == len(sites_to_plot))
+        ].index
+        df = df[df.pdb_id.isin(unmutated)]
+
+    # Report how many structures survive filtering in each V family
+    print(f"Structures per V family after filtering (site range {sites_to_plot}):")
+    for v_family in v_families:
+        n_pdbs = df.loc[
+            (df.v_family_heavy == v_family) & df.site.isin(sites_to_plot), "pdb_id"
+        ].nunique()
+        print(f"  {v_family}: {n_pdbs} PDBs")
+
+    TITLE_SIZE = 18
+    LABEL_SIZE = 16
+    TICK_SIZE = 14
+    LEGEND_SIZE = 15
 
     # Create figure
     n_rows = len(v_families)
@@ -1394,8 +1424,8 @@ def plot_ramachandran_by_site_range(
                 ax.set_xlim(-180, 180)
                 ax.set_ylim(-180, 180)
                 ax.set_aspect("equal")
-                ax.set_xlabel("Phi (φ)", fontsize=10)
-                ax.set_ylabel("Psi (ψ)", fontsize=10)
+                ax.set_xlabel("Phi (φ)", fontsize=LABEL_SIZE)
+                ax.set_ylabel("Psi (ψ)", fontsize=LABEL_SIZE)
             else:
                 ax.text(
                     0.5,
@@ -1403,15 +1433,20 @@ def plot_ramachandran_by_site_range(
                     "No data",
                     ha="center",
                     va="center",
+                    fontsize=LABEL_SIZE,
                     transform=ax.transAxes,
                 )
                 ax.set_xlim(-180, 180)
                 ax.set_ylim(-180, 180)
 
+            ax.tick_params(labelsize=TICK_SIZE)
+
             if row_idx == 0:
-                ax.set_title(f"Site {site}", fontsize=11, fontweight="bold")
+                ax.set_title(f"Site {site}", fontsize=TITLE_SIZE, fontweight="bold")
             if col_idx == 0:
-                ax.set_ylabel(f"{v_family}\nPsi (ψ)", fontsize=10, fontweight="bold")
+                ax.set_ylabel(
+                    f"{v_family}\nPsi (ψ)", fontsize=LABEL_SIZE, fontweight="bold"
+                )
 
     plt.tight_layout()
 
@@ -1419,16 +1454,19 @@ def plot_ramachandran_by_site_range(
         leg = fig.legend(
             legend_handles,
             legend_labels,
-            loc="lower center",
-            bbox_to_anchor=(0.5, -0.05),
+            loc="upper center",
+            # Anchor a fixed distance below the figure so the gap stays constant
+            # in inches as the figure grows taller with more V families.
+            bbox_to_anchor=(0.5, -0.15 / fig.get_figheight()),
             ncol=min(len(legend_labels), 10),
-            fontsize=9,
+            fontsize=LEGEND_SIZE,
+            title_fontsize=LABEL_SIZE,
             frameon=True,
             title="Amino Acid",
+            markerscale=1.5,
         )
         for handle in leg.legend_handles:
             handle.set_alpha(1.0)
-        plt.subplots_adjust(bottom=0.1)
 
     if save_fig:
         import os
