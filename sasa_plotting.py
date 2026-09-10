@@ -21,10 +21,15 @@ DEFAULT_RSA_METRICS = [
     ("burial_by_vdj_junction", "Δ RSA CDR3"),
 ]
 
-# Fixed y-axis limits by metric type
-RSA_YLIM = (0, 1)
-BURIAL_YLIM_ENTRENCHMENT = (0, 0.65)
-BURIAL_YLIM_SITE_GRID = (0, 0.5)
+# Fixed y-axis limits by metric type.
+# RSA and the burial metrics are all non-negative, so a fully buried site (RSA 0)
+# or a site the partner never contacts (burial 0) has a box of zero height. Each
+# floor sits ~4% of the axis range below zero to lift those boxes clear of the
+# bottom spine, where they would otherwise be clipped and read as missing data
+# rather than as zero.
+RSA_YLIM = (-0.04, 1)
+BURIAL_YLIM_ENTRENCHMENT = (-0.03, 0.65)
+BURIAL_YLIM_SITE_GRID = (-0.025, 0.5)
 
 
 def plot_rsa_by_vfamily(
