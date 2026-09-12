@@ -158,10 +158,11 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 | Fig S9 | RSA at between-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S10 | Shannon entropy (3-category entrenchment) | [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) |
 | Fig S11 | Between-family entrenchment for additional V-family pairs | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
-| Fig S12 | Backbone angles at site 9 | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
-| Fig S13 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
-| Fig S14 | Germline allele misassignment simulation | [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) |
-| Table S1 | Hydrogen bonding at sites 73–75 | Manually created (ChimeraX); see [`site_73_structural/`](site_73_structural/) for commands and notes |
+| Fig S12 | Backbone angles at site 9 (A); density at sites 7–11 (B–C) | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) (A); manually created in ChimeraX (B–C) |
+| Fig S13 | Density at site 73 in IGHV1 and IGHV3 | Manually created (ChimeraX; see paper Methods) |
+| Fig S14 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
+| Fig S15 | Germline allele misassignment simulation | [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) |
+| Table S1 | Hydrogen bonding at sites 73–75 | Manually created (ChimeraX); see [`site_73_structural/hbond_raw_data.md`](site_73_structural/hbond_raw_data.md) |
 
 ### Supplementary data files
 
