@@ -113,6 +113,7 @@ The remaining notebooks can then be run in any order:
 - [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Fig 4)
 - [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12)
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
+- [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) — Whether selection at the entrenched sites depends on CDR-H3 length, charge and hydrophobicity (Fig S16). Needs the SASA data.
 - [`within_family_validation.ipynb`](within_family_validation.ipynb) — Validates that pooling V gene alleles within a family does not create false entrenchment calls (Fig S5)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
 - [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S13). **Note:** This notebook loads a large dataframe so run with enough memory.
@@ -162,6 +163,7 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 | Fig S13 | Density at site 73 in IGHV1 and IGHV3 | Manually created (ChimeraX; see paper Methods) |
 | Fig S14 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
 | Fig S15 | Germline allele misassignment simulation | [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) |
+| Fig S16 | Dependence of selection on CDR-H3 length, and burial by the CDR-H3 against its length | [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) |
 | Table S1 | Hydrogen bonding at sites 73–75 | Manually created (ChimeraX); see [`site_73_structural/hbond_raw_data.md`](site_73_structural/hbond_raw_data.md) |
 
 ### Supplementary data files
@@ -177,6 +179,7 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 |------|------|
 | [`utils.py`](utils.py) | Core utilities imported by most notebooks |
 | [`rates_analysis_util.py`](rates_analysis_util.py) | Rate analysis utilities for validation notebooks |
+| [`cdr3_stratification_util.py`](cdr3_stratification_util.py) | CDR-H3 descriptors and CDR-H3 contact frequencies for the CDR-H3 dependence notebook |
 | [`sasa_plotting.py`](sasa_plotting.py) | RSA/SASA plotting functions |
 | [`annotate_sabdab_anarci.py`](annotate_sabdab_anarci.py) | V/J gene annotation of SAbDab structures using ANARCI |
 | [`run_sasa_analysis.py`](run_sasa_analysis.py) | SASA data generation from PDB structures |
@@ -192,7 +195,6 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 |----------|-------------|
 | [`grab_motifs_with_dnsm.ipynb`](grab_motifs_with_dnsm.ipynb) | Motif extraction, may generate intermediate data |
 | [`dasm_model_comparison.ipynb`](dasm_model_comparison.ipynb) | Model comparison exploration |
-| [`light_chain_selection_at_entrenched_sites.ipynb`](light_chain_selection_at_entrenched_sites.ipynb) | Light chain selection analysis |
 | [`light_chain_pairing_bias_with_entrenched_sites.ipynb`](light_chain_pairing_bias_with_entrenched_sites.ipynb) | Light chain pairing bias |
 | [`neutral_rates_for_interesting_sites.ipynb`](neutral_rates_for_interesting_sites.ipynb) | Neutral rates at specific sites |
 

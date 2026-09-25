@@ -15,14 +15,17 @@ Effective sample size is the number of clonal families, not parent-child pairs: 
 a family share one CDR-H3, so anything built on these helpers should treat the family as
 the unit.
 
-This module holds only shared data preparation. The statistics live in the notebooks:
-cdr3_dependence_of_selection.ipynb and cdr3_pairing_bias_with_entrenched_sites.ipynb.
+This module holds only shared data preparation. The statistics live in
+cdr3_dependence_of_selection.ipynb.
 """
 
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
+
+from run_sasa_analysis import HEAVY_REMOVAL_SCENARIOS
+from utils import load_entrenched_sites, site_base_number, sort_antibody_sites
 
 # The CDR-H3 descriptors we stratify on.
 CDR3_DESCRIPTORS = ["cdr3_length", "cdr3_charge", "cdr3_hydrophobicity"]
@@ -34,16 +37,52 @@ CDR3_DESCRIPTORS = ["cdr3_length", "cdr3_charge", "cdr3_hydrophobicity"]
 MAX_V_REGION_SITE = 94
 
 
-def site_number(site):
-    """Numeric part of a Chothia site label, so insertion codes like 52A sort correctly."""
-    digits = "".join(c for c in str(site) if c.isdigit())
-    return int(digits) if digits else -1
-
-
 def v_region_only(df, site_col="site"):
     """Restrict to V-gene-encoded sites (<= 94)."""
     sites = df.index if site_col is None else df[site_col]
-    return df[[site_number(s) <= MAX_V_REGION_SITE for s in sites]]
+    return df[[site_base_number(s) <= MAX_V_REGION_SITE for s in sites]]
+
+
+def _cdr3_window_rows(df, id_col, numbering_scheme):
+    """Rows of `df` inside the window the SASA analysis deletes for
+    `rsa_vdj_junction_effect` (Chothia 95-102), one per (`id_col`, site)."""
+    if numbering_scheme != "chothia":
+        raise ValueError(f"the SASA deletion window is in Chothia numbering, got "
+                         f"{numbering_scheme!r}")
+    start, end = HEAVY_REMOVAL_SCENARIOS["heavy_no_vdj_junction"]
+    n = df.site.map(site_base_number)
+    return df[(n >= start) & (n <= end)].drop_duplicates([id_col, "site"])
+
+
+def cdr3_length_by(df, id_col, numbering_scheme="chothia"):
+    """CDR-H3 length per `id_col`: residues present in the SASA deletion window.
+
+    Used for SAbDab structures (`pdb_id`); `cdr3_descriptors_by` gives the same length for
+    repertoire parents, so the two are measured the same way as the burial they are
+    compared with.
+    """
+    w = _cdr3_window_rows(df, id_col, numbering_scheme)
+    return w.groupby(id_col).size().rename("cdr3_length")
+
+
+def cdr3_descriptors_by(aa_df, id_col="pcp_index", numbering_scheme="chothia"):
+    """CDR3_DESCRIPTORS of each parent, all over the SASA deletion window (Chothia 95-102).
+
+    `add_cdr3_descriptors` reads the annotated CDR3 span instead, which also covers sites
+    93 and 94. Those are V-gene encoded and are themselves sites in the analysis (94 is
+    often R or K), so a descriptor that includes them partly measures the germline.
+    Charge and hydrophobicity are computed as in `add_cdr3_descriptors`.
+    """
+    w = _cdr3_window_rows(aa_df, id_col, numbering_scheme)
+    order = {site: i for i, site in enumerate(sort_antibody_sites(w.site.unique()))}
+    w = w.assign(_order=w.site.map(order)).sort_values([id_col, "_order"])
+    seqs = w.groupby(id_col).parent_aa.agg("".join)
+    analyses = seqs.apply(ProteinAnalysis)
+    return pd.DataFrame({
+        "cdr3_length": seqs.str.len(),
+        "cdr3_charge": analyses.apply(lambda a: a.charge_at_pH(7.0)),
+        "cdr3_hydrophobicity": analyses.apply(lambda a: a.gravy()),
+    })
 
 
 # A site counts as CDR-H3-contacting when the CDR-H3 reaches it in most structures.
@@ -52,6 +91,9 @@ def v_region_only(df, site_col="site"):
 # structures, and site 2 is contacted in 98% but shallowly. Frequency is also the quantity
 # that matches what a DASM selection factor averages over: a repertoire of many CDR-H3s.
 CDR3_CONTACT_THRESHOLD = 0.5
+
+# Structures a site needs before its contact frequency or burial correlation is used.
+MIN_STRUCTURES = 30
 
 
 def add_cdr3_descriptors(pcp_df):
@@ -113,8 +155,6 @@ def classify_sites(burial_df, numbering_scheme="chothia"):
     Note that a site can be entrenched at both levels; ``entrenchment`` reports the
     within-family call where both apply, since that is the paper's primary analysis.
     """
-    from utils import load_entrenched_sites
-
     _, _, _, _, within, between = load_entrenched_sites(numbering_scheme)
     within_sites = set(within.site.astype(str))
     between_sites = set(between.site.astype(str))
@@ -136,7 +176,7 @@ def classify_sites(burial_df, numbering_scheme="chothia"):
 def cdr3_burial_by_site(
     sasa_path="_output/sasa_human_chothia_anarci.csv",
     v_families=("IGHV1", "IGHV3"),
-    min_structures=30,
+    min_structures=MIN_STRUCTURES,
 ):
     """Change in RSA per site when the CDR-H3 is deleted, over SAbDab structures.
 
@@ -176,8 +216,8 @@ def substitution_level_selection(dasm_df):
     which residues are one nucleotide away, so two units with the same germline residue but
     different codons average over different target sets.
 
-    Pairs within a family are deduplicated rather than averaged -- their parent sequence is
-    identical, so their selection factors are too.
+    Pairs within a family are deduplicated rather than averaged: on v1rodriguez their
+    selection factors for a given substitution are identical (checked over all 2.48M units).
     """
     keys = ["site", "v_family", "v_gene", "parent_aa", "selection_factor_target_aa",
             "family_key"]

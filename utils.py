@@ -74,6 +74,20 @@ def get_cdr_definitions(numbering_scheme='imgt', chain='heavy'):
         raise ValueError(f"Invalid numbering_scheme: {numbering_scheme}. Must be 'imgt' or 'chothia'.")
 
 
+def site_base_number(site):
+    """
+    Numeric part of a site label, dropping any insertion code.
+
+    Handles IMGT decimal notation ('30.1' -> 30) and Chothia letter notation
+    ('30A' -> 30). Returns 0 if the label contains no digits.
+    """
+    site_str = str(site)
+    if '.' in site_str:
+        return int(site_str.split('.')[0])
+    num_part = ''.join(c for c in site_str if c.isdigit())
+    return int(num_part) if num_part else 0
+
+
 def is_in_cdr(site, numbering_scheme='imgt', chain='heavy'):
     """
     Check if a site is in any CDR region.
