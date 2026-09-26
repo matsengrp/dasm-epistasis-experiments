@@ -117,6 +117,7 @@ The remaining notebooks can then be run in any order:
 - [`within_family_validation.ipynb`](within_family_validation.ipynb) — Validates that pooling V gene alleles within a family does not create false entrenchment calls (Fig S5)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
 - [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S13). **Note:** This notebook loads a large dataframe so run with enough memory.
+- [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Needs the SASA data and the output of [`run_contact_analysis.py`](run_contact_analysis.py).
 
 ### Step 2: Aggregate results and create supplementary data files
 
@@ -164,6 +165,7 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 | Fig S14 | Pairwise validation for IGHV4 comparisons | [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) |
 | Fig S15 | Germline allele misassignment simulation | [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) |
 | Fig S16 | Dependence of selection on CDR-H3 length, and burial by the CDR-H3 against its length | [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) |
+| Fig S17 | Atomic contacts within 5 Å at IGHV3 within-family entrenched sites | [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) |
 | Table S1 | Hydrogen bonding at sites 73–75 | Manually created (ChimeraX); see [`site_73_structural/hbond_raw_data.md`](site_73_structural/hbond_raw_data.md) |
 
 ### Supplementary data files
@@ -183,6 +185,7 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 | [`sasa_plotting.py`](sasa_plotting.py) | RSA/SASA plotting functions |
 | [`annotate_sabdab_anarci.py`](annotate_sabdab_anarci.py) | V/J gene annotation of SAbDab structures using ANARCI |
 | [`run_sasa_analysis.py`](run_sasa_analysis.py) | SASA data generation from PDB structures |
+| [`run_contact_analysis.py`](run_contact_analysis.py) | Atomic distance and contact data generation from PDB structures |
 | [`create_germline_codon_tables.py`](create_germline_codon_tables.py) | Generates germline reference data |
 | [`site9_discrepancy_analysis.ipynb`](site9_discrepancy_analysis.ipynb) | Investigation of site 9 validation discrepancy |
 | [`dnsmex/`](dnsmex/) | Core library for DNSM/DASM analysis |
