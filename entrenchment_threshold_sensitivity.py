@@ -87,10 +87,11 @@ def draw_scatter_panel(
             label=label,
             color=color,
             edgecolor="black",
-            linewidth=0.5,
+            linewidth=0.2,
+            s=14,
         )
 
-    ax.set_ylabel("Sum of median\nlog selection factors", fontsize=10)
+    ax.tick_params(axis="y", labelsize=9)
     ax.grid(True, alpha=0.4, linewidth=0.8)
     ax.axhline(0, color="gray", linestyle=":", linewidth=0.8, alpha=0.6)
 
@@ -145,7 +146,7 @@ def draw_distribution_panel_within(
                 )
                 bottom += percentage
 
-    ax.set_ylabel("Germline AA\ndistribution", fontsize=10)
+    ax.set_ylabel("Germline AA\ndistribution", fontsize=9)
     ax.axhline(0, color="black", linestyle="-", alpha=0.8, linewidth=1.0, zorder=0)
     ax.set_yticks([])
 
@@ -212,7 +213,7 @@ def draw_distribution_panel_between(
                 )
                 bottom2 += percentage
 
-    ax.set_ylabel("Germline AA\ndistribution", fontsize=10)
+    ax.set_ylabel("Germline AA\ndistribution", fontsize=9, labelpad=20)
     ax.axhline(0, color="black", linestyle="-", alpha=0.8, linewidth=1.5, zorder=0)
     ax.text(
         -0.01, 0.75, v_family1, transform=ax.transAxes, fontsize=10,
@@ -246,7 +247,7 @@ def build_count_sweep_figure(
         )
         counts.append(int(is_entrenched.sum()))
 
-    fig, ax = plt.subplots(1, 1, figsize=(4.5, 3.0))
+    fig, ax = plt.subplots(1, 1, figsize=(3.5, 2.5))
     ax.plot(
         SWEEP_THRESHOLDS,
         counts,
@@ -262,10 +263,10 @@ def build_count_sweep_figure(
         linewidth=1.2,
         alpha=0.8,
     )
-    ax.set_xlabel("Threshold (log selection factor)", fontsize=9)
-    ax.set_ylabel("Number of entrenched pairs", fontsize=9)
+    ax.set_xlabel("Threshold (log selection factor)", fontsize=10)
+    ax.set_ylabel("Number of entrenched pairs", fontsize=10)
     ax.set_title(title, fontsize=10)
-    ax.tick_params(axis="both", labelsize=8)
+    ax.tick_params(axis="both", labelsize=9)
     ax.grid(True, alpha=0.3)
 
     fig.tight_layout()
@@ -280,7 +281,6 @@ def build_sensitivity_figure(
     compare_df: pd.DataFrame,
     germline_codons_df: pd.DataFrame,
     sorted_sites: list,
-    title: str,
     output_stem: Path,
     distribution_kind: str,
     family1: str,
@@ -292,14 +292,14 @@ def build_sensitivity_figure(
     n_thresholds = len(THRESHOLDS)
 
     # One scatter row per threshold plus one distribution row at the bottom.
-    height_ratios = [1.0] * n_thresholds + [1.3]
-    fig_height = 2.6 * n_thresholds + 3.0
+    height_ratios = [1.0] * n_thresholds + [1.6]
+    fig_height = 1.15 * n_thresholds + 1.8
     fig, axes = plt.subplots(
         n_thresholds + 1,
         1,
-        figsize=(20, fig_height),
+        figsize=(10, fig_height),
         sharex=True,
-        gridspec_kw={"height_ratios": height_ratios, "hspace": 0.30},
+        gridspec_kw={"height_ratios": height_ratios, "hspace": 0.5},
     )
 
     scatter_axes = axes[:-1]
@@ -309,6 +309,10 @@ def build_sensitivity_figure(
         draw_scatter_panel(
             ax, compare_df, sorted_sites, site_to_position, threshold, total_pairs
         )
+    # One shared y label on the middle scatter row; per-row labels overlap.
+    scatter_axes[n_thresholds // 2].set_ylabel(
+        "Sum of median log selection factors", fontsize=10
+    )
 
     if distribution_kind == "within":
         draw_distribution_panel_within(
@@ -331,10 +335,11 @@ def build_sensitivity_figure(
         ax.set_xticklabels([])
     dist_ax.set_xlim(-0.5, len(sorted_sites) - 0.5)
     dist_ax.set_xticks(range(len(sorted_sites)))
-    dist_ax.set_xticklabels(sorted_sites, rotation=90, fontsize=8)
-    dist_ax.set_xlabel("Site position (Chothia numbering)", fontsize=11)
+    dist_ax.set_xticklabels(sorted_sites, rotation=90, fontsize=7.5)
+    dist_ax.set_xlabel("Site position (Chothia numbering)", fontsize=10)
 
-    # Shared entrenched/not-entrenched legend on the top scatter row.
+    # Shared entrenched/not-entrenched legend above the top scatter row, on the
+    # same line as its left-aligned threshold title.
     handles, labels = scatter_axes[0].get_legend_handles_labels()
     order = {lbl: h for h, lbl in zip(handles, labels)}
     ordered_labels = [lbl for lbl in ["entrenched", "not entrenched"] if lbl in order]
@@ -342,12 +347,15 @@ def build_sensitivity_figure(
         scatter_axes[0].legend(
             [order[lbl] for lbl in ordered_labels],
             ordered_labels,
-            bbox_to_anchor=(1.02, 1.0),
-            loc="upper left",
-            frameon=False,
+            bbox_to_anchor=(1.0, 1.0),
+            loc="lower right",
+            ncol=2,
+            frameon=True,
+            fontsize=9,
+            borderaxespad=0.3,
         )
 
-    # Amino acid legend on the distribution row, matching the notebook figure.
+    # Amino acid legend below the x axis label, so the plots span the full width.
     legend_handles = [
         plt.Rectangle((0, 0), 1, 1, facecolor=PALETTE_AA[aa],
                       edgecolor="black", linewidth=0.5)
@@ -356,18 +364,20 @@ def build_sensitivity_figure(
     dist_ax.legend(
         legend_handles,
         list(AA_STR_SORTED),
-        bbox_to_anchor=(1.02, 1),
-        loc="upper left",
-        title="Amino Acids",
+        bbox_to_anchor=(0.5, -0.5),
+        loc="upper center",
         fontsize=9,
-        ncol=2,
+        ncol=len(AA_STR_SORTED),
+        frameon=True,
+        handlelength=1.0,
+        handletextpad=0.4,
+        columnspacing=0.9,
     )
 
-    fig.suptitle(title, fontsize=14, y=0.995)
     # The distribution panel uses axes-transform text, which is incompatible
     # with tight_layout, so we set padding manually.
     fig.subplots_adjust(
-        left=0.06, right=0.90, top=0.965, bottom=0.07, hspace=0.30,
+        left=0.07, right=0.99, top=0.97, bottom=0.09, hspace=0.5,
     )
 
     pdf_path = output_stem.with_suffix(".pdf")
@@ -390,13 +400,11 @@ def run_within(v_family: str, germline_codons_df: pd.DataFrame) -> None:
     )
     sorted_sites = sort_antibody_sites(family_sites)
 
-    title = f"Threshold sensitivity of entrenchment calls within {v_family}"
     output_stem = OUTPUT_DIR / f"threshold_sensitivity_within_{v_family}"
     build_sensitivity_figure(
         compare_df,
         germline_codons_df,
         sorted_sites,
-        title,
         output_stem,
         distribution_kind="within",
         family1=v_family,
@@ -424,9 +432,6 @@ def run_between(
     )
     sorted_sites = sort_antibody_sites(family_sites)
 
-    title = (
-        f"Threshold sensitivity of entrenchment calls: {v_family1} vs {v_family2}"
-    )
     output_stem = (
         OUTPUT_DIR / f"threshold_sensitivity_{v_family1}_vs_{v_family2}"
     )
@@ -434,7 +439,6 @@ def run_between(
         compare_df,
         germline_codons_df,
         sorted_sites,
-        title,
         output_stem,
         distribution_kind="between",
         family1=v_family1,
