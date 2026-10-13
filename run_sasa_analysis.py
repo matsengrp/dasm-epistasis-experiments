@@ -97,6 +97,8 @@ from Bio.PDB import PDBParser, PDBIO, Select
 from Bio.PDB.DSSP import DSSP
 from Bio.PDB.Polypeptide import PPBuilder
 
+from dnsmex.local import localify
+
 # Constants - File paths and directories
 SCRIPT_DIR = Path(__file__).resolve().parent
 SABDAB_ABID_INFO_PATH = str(
@@ -105,8 +107,8 @@ SABDAB_ABID_INFO_PATH = str(
 SABDAB_CHAIN_INFO_PATH = str(
     SCRIPT_DIR / "data/sabdab/sabdab_summary_all_2024-01-26.tsv"
 )
-LIBCIFPP_DATA_DIR = "/home/nharel/miniforge3/envs/netam_env/share/libcifpp"
-PDB_BASE_DIR = "/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db"
+# Root of the local SAbDab PDB mirror, set in dnsmex/local_config.py (see README)
+PDB_BASE_DIR = localify("SABDAB_PDB_DIR")
 
 # Set random seed for reproducibility
 random.seed(42)
@@ -1328,8 +1330,10 @@ Output columns include:
 
     args = parser.parse_args()
 
-    # Set up environment
-    os.environ.setdefault("LIBCIFPP_DATA_DIR", LIBCIFPP_DATA_DIR)
+    # DSSP needs libcifpp data; the conda dssp package sets this on activation
+    if "LIBCIFPP_DATA_DIR" not in os.environ:
+        sys.exit("Error: LIBCIFPP_DATA_DIR is not set. Install DSSP with "
+                 "`conda install -c conda-forge dssp` and reactivate the environment.")
 
     # Validate output file early to catch issues before processing
     if not validate_output_file(args.output):

@@ -23,9 +23,12 @@ from Bio.PDB.Polypeptide import PPBuilder
 from anarci import anarci
 from tqdm import tqdm
 
+from dnsmex.local import localify
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_SABDAB_TSV = SCRIPT_DIR / "data/sabdab/sabdab_summary_all_2024-01-26.tsv"
-DEFAULT_PDB_DIR = Path("/fh/fast/matsen_e/shared/bcr-mut-sel/sabdab/pdb-db/pdb/opig-imgt")
+# SABDAB_PDB_DIR is set in dnsmex/local_config.py (see README)
+DEFAULT_PDB_DIR = Path(localify("SABDAB_PDB_DIR/pdb/opig-imgt"))
 
 # Map SAbDab heavy_species to ANARCI allowed_species
 SPECIES_MAP = {

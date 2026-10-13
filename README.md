@@ -94,11 +94,11 @@ Pre-computed annotations are included in [`data/sabdab/sabdab_anarci_annotations
 You will need:
 
 - **SAbDab summary tables and ANARCI annotations**: included in [`data/sabdab/`](data/sabdab/) (2024-01-26 snapshot)
-- **PDB structure files**: download from [RCSB PDB](https://www.rcsb.org/) or via SAbDab's bulk download. Update `PDB_BASE_DIR` in [`run_sasa_analysis.py`](run_sasa_analysis.py) to point to your local PDB directory.
+- **PDB structure files**: download from [RCSB PDB](https://www.rcsb.org/) or via SAbDab's bulk download. Set `SABDAB_PDB_DIR` in `dnsmex/local_config.py` to the root of your local copy (the directory containing `pdb/opig-chothia`).
 - **DSSP**: install via `conda install -c conda-forge dssp`
 
 ```bash
-python run_sasa_analysis.py --organism "homo sapiens"
+python run_sasa_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/sasa_human_chothia_anarci.csv
 ```
 
 ## Reproducing the analysis
@@ -114,16 +114,16 @@ The remaining notebooks can then be run in any order:
 - [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12)
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
 - [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) — Whether selection at the entrenched sites depends on CDR-H3 length, charge and hydrophobicity (Fig S16). Needs the SASA data.
-- [`within_family_validation.ipynb`](within_family_validation.ipynb) — Validates that pooling V gene alleles within a family does not create false entrenchment calls (Fig S5)
+- [`within_family_validation.ipynb`](within_family_validation.ipynb) — Per-V-gene-allele median selection factors at the within-family entrenched sites, checking whether pooling alleles within a family drives the entrenchment calls (Fig S2)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
-- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S13). **Note:** This notebook loads a large dataframe so run with enough memory.
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
 - [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Needs the SASA data and the output of [`run_contact_analysis.py`](run_contact_analysis.py).
 
 ### Step 2: Aggregate results and create supplementary data files
 
 ```bash
 python create_combined_entrenched_sites.py    # combined_entrenched_sites.csv
-python entrenchment_threshold_sensitivity.py  # Figs S2-S4
+python entrenchment_threshold_sensitivity.py  # Figs S3-S5
 python create_combined_validation_table.py    # combined_validation_table_entrenched_for_paper.csv
 ```
 
@@ -150,10 +150,10 @@ python create_combined_validation_table.py    # combined_validation_table_entren
 | Figure | Description | Source |
 |--------|-------------|--------|
 | Fig S1 | V-gene pairwise similarity | [`germline.ipynb`](germline.ipynb) |
-| Fig S2 | Threshold sensitivity within IGHV1 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
-| Fig S3 | Threshold sensitivity within IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
-| Fig S4 | Threshold sensitivity IGHV1 vs IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
-| Fig S5 | Per-V-gene-allele median selection factors at entrenched sites | [`within_family_validation.ipynb`](within_family_validation.ipynb) |
+| Fig S2 | Per-V-gene-allele median selection factors at entrenched sites | [`within_family_validation.ipynb`](within_family_validation.ipynb) |
+| Fig S3 | Threshold sensitivity within IGHV1 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
+| Fig S4 | Threshold sensitivity within IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
+| Fig S5 | Threshold sensitivity IGHV1 vs IGHV3 | [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) |
 | Fig S6 | Within-family entrenchment for IGHV4 | [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) |
 | Fig S7 | RSA at IGHV1 within-family entrenched sites | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |
 | Fig S8 | RSA grid by site and amino acid | [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) |

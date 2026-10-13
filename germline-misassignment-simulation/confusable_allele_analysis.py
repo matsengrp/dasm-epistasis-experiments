@@ -17,18 +17,25 @@ Analysis:
    (have at least one confusable partner differing at that site)
 4. In the Rodriguez dataset, compute what % of sequences use at-risk V genes
 
-Usage:
-    python confusable_allele_analysis.py
+Usage (from the repo root):
+    python germline-misassignment-simulation/confusable_allele_analysis.py
 """
 
+import os
+import sys
 from itertools import combinations
 
 import pandas as pd
 
+# Add repo root to path so dnsmex can be imported
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from dnsmex.local import localify
+
 GERMLINE_CODONS_PATH = "germline/germline_codons_chothia.csv"
 ENTRENCHED_DIR = "_output/entrenchment_analysis/chothia"
-PCP_PATH = ("/home/nharel/re/dnsm-experiments-1/dasm-train/_ignore/test_output/"
-            "dasm_4m-v1jaffeCC+v1tangCC-joint-ON-v1rodriguez-chothia-pcp_df.csv")
+PCP_PATH = localify("DASM_TEST_OUTPUT_DIR/"
+                    "dasm_4m-v1jaffeCC+v1tangCC-joint-ON-v1rodriguez-chothia-pcp_df.csv")
 
 WITHIN_FAMILIES = ["IGHV1", "IGHV3", "IGHV4"]
 
