@@ -53,6 +53,8 @@ This creates a `dasm-epistasis-data/` directory containing:
 
 **Note on cached outputs:** The `dasm_test_output/`, `dnsm_test_output/`, and `neutral_mutability_cache/` directories contain pre-computed intermediate results that are included for convenience. The analysis code will regenerate these automatically if they are missing, but recomputation is expensive. Only the PCP files, ANARCI outputs, and trained models are strictly required.
 
+**Note on the DASM model:** The DASM model (`dasm_4m-v1jaffeCC+v1tangCC-joint`) is included in the archive. It was trained on the Jaffe and Tang heavy-chain datasets as described in [Matsen et al. (2026)](https://doi.org/10.7554/eLife.109644), and is distinct from netam's pretrained paired-chain model `DASMHumV1.0-4M`.
+
 ### 5. Configure local paths
 
 ```bash
