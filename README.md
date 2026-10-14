@@ -204,13 +204,4 @@ Then run [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb
 | [`germline/`](germline/) | Germline reference data (OGRDB-derived); to regenerate, run [`create_germline_codon_tables.py`](create_germline_codon_tables.py) (requires [ANARCI](https://github.com/oxpig/ANARCI)) |
 | [`branch-length-regression/`](branch-length-regression/) | Linear relationship between DASM branch lengths and mutation frequency, used in the Thrifty validation |
 
-## Exploratory notebooks (not used in paper)
-
-| Notebook | Description |
-|----------|-------------|
-| [`grab_motifs_with_dnsm.ipynb`](grab_motifs_with_dnsm.ipynb) | Motif extraction, may generate intermediate data |
-| [`dasm_model_comparison.ipynb`](dasm_model_comparison.ipynb) | Model comparison exploration |
-| [`light_chain_pairing_bias_with_entrenched_sites.ipynb`](light_chain_pairing_bias_with_entrenched_sites.ipynb) | Light chain pairing bias |
-| [`neutral_rates_for_interesting_sites.ipynb`](neutral_rates_for_interesting_sites.ipynb) | Neutral rates at specific sites |
-
-The [`old/`](old/) directory contains superseded analyses that are not used in the paper.
+Notebooks not listed above, and the [`old/`](old/) directory, contain exploratory or superseded analyses that are not used in the paper.
