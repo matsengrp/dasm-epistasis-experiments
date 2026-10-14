@@ -7,7 +7,7 @@ each reciprocal pair as entrenched under a grid of log-selection-factor
 thresholds. For every comparison CSV we emit a multi-panel figure that mirrors
 the published plot style (same x axis, same CDR shading, same germline amino
 acid distribution panel at the bottom) but stacks one scatter row per threshold
-so a reviewer can see how the called set shifts around the published -1 cutoff.
+so a reader can see how the called set shifts around the published -1 cutoff.
 
 No model re-runs are required: all scatter inputs live in
 `_output/entrenchment_analysis/chothia/comparison_*.csv`, and the distribution
@@ -28,7 +28,7 @@ INPUT_DIR = REPO_ROOT / "_output" / "entrenchment_analysis" / "chothia"
 GERMLINE_CSV = REPO_ROOT / "germline" / "germline_codons_chothia.csv"
 OUTPUT_DIR = INPUT_DIR  # save alongside existing outputs
 
-# Grid requested by the reviewer response: brackets the published -1 cutoff
+# Threshold grid: brackets the published -1 cutoff
 # symmetrically in 0.2 steps.
 THRESHOLDS = [-0.6, -0.8, -1.0, -1.2, -1.4]
 PUBLISHED_THRESHOLD = -1.0
