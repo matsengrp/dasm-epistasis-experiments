@@ -10,7 +10,11 @@ bioRxiv preprint: [10.64898/2026.04.21.720000](https://doi.org/10.64898/2026.04.
 
 ### 1. Install netam
 
-Follow the instructions to install [netam](https://github.com/matsengrp/netam) into a virtual environment.
+Follow the instructions to install [netam](https://github.com/matsengrp/netam) into a virtual environment, using commit `bd208d0` (v0.2.4+3), the version used for the paper:
+
+```bash
+pip install git+https://github.com/matsengrp/netam.git@bd208d0
+```
 
 ### 2. Install additional dependencies
 
