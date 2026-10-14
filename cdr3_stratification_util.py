@@ -174,7 +174,7 @@ def classify_sites(burial_df, numbering_scheme="chothia"):
 
 
 def cdr3_burial_by_site(
-    sasa_path="_output/sasa_human_chothia_anarci.csv",
+    sasa_path="_output/sasa_human_chothia_anarci.csv.gz",
     v_families=("IGHV1", "IGHV3"),
     min_structures=MIN_STRUCTURES,
 ):
