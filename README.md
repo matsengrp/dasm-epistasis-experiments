@@ -85,7 +85,7 @@ The remaining notebooks and scripts can then be run in any order:
 - [`create_combined_entrenched_sites.py`](create_combined_entrenched_sites.py) — Writes `_output/combined_entrenched_sites.csv` (supplementary data file)
 - [`create_combined_validation_table.py`](create_combined_validation_table.py) — Writes `_output/combined_validation_table_entrenched_for_paper.csv` (supplementary data file). Run after the two `rates_analysis_*` notebooks.
 
-## Analyses with extra requirements (optional)
+## Analyses with extra requirements
 
 ### Solvent Accessible Surface Area (SASA) data (optional)
 
@@ -117,6 +117,24 @@ You will need:
 ```bash
 python run_sasa_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/sasa_human_chothia_anarci.csv
 ```
+
+### Germline misassignment simulation
+
+Fig S15 requires two things beyond the setup above:
+
+- [partis](https://github.com/psathyrella/partis) (see its installation instructions; `partis` must be on your `PATH`)
+- `rodriguez-airr-seq-race-prod-NoWinCheck_igh_pcp_2024-11-12_MASKED_NI.csv.gz`, the Rodriguez PCP file that includes naive-rooted pairs. It is available as a separate file in the same [Zenodo](https://doi.org/10.5281/zenodo.20171634) record; place it in `dasm-epistasis-data/v3/`.
+
+From the repository root, run in order:
+
+```bash
+python germline-misassignment-simulation/simulate_mrca.py          # simulate MRCAs from naive-to-MRCA PCPs with Thrifty+DASM
+python germline-misassignment-simulation/prepare_partis_input.py   # write FASTAs of the original and simulated MRCAs
+bash germline-misassignment-simulation/run_partis_cache_parameters.sh original_mrcas    # annotate with partis
+bash germline-misassignment-simulation/run_partis_cache_parameters.sh simulated_mrcas
+```
+
+Then run [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) to produce the figure.
 
 ## Figure-to-source mapping
 
