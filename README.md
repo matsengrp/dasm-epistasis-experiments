@@ -6,7 +6,7 @@ Analysis code for reproducing the results presented in:
 
 bioRxiv preprint: [10.64898/2026.04.21.720000](https://doi.org/10.64898/2026.04.21.720000)
 
-## Installation
+## Setup
 
 ### 1. Install netam
 
@@ -28,13 +28,9 @@ cd thrifty-experiments-1
 pip install -e .
 ```
 
-## Data
+### 4. Download and extract data
 
-All data required to reproduce the analyses are available as a single archive on Zenodo.
-
-### 1. Download and extract data
-
-Download `dasm-epistasis-data.tar` from [Zenodo](https://doi.org/10.5281/zenodo.20171634) and extract it:
+All data required to reproduce the analyses are available as a single archive on Zenodo. Download `dasm-epistasis-data.tar` from [Zenodo](https://doi.org/10.5281/zenodo.20171634) and extract it:
 
 ```bash
 tar xf dasm-epistasis-data.tar
@@ -53,7 +49,7 @@ This creates a `dasm-epistasis-data/` directory containing:
 
 **Note on cached outputs:** The `dasm_test_output/`, `dnsm_test_output/`, and `neutral_mutability_cache/` directories contain pre-computed intermediate results that are included for convenience. The analysis code will regenerate these automatically if they are missing, but recomputation is expensive. Only the PCP files, ANARCI outputs, and trained models are strictly required.
 
-### 2. Configure local paths
+### 5. Configure local paths
 
 ```bash
 cp dnsmex/local_config.py.template dnsmex/local_config.py
@@ -61,7 +57,7 @@ cp dnsmex/local_config.py.template dnsmex/local_config.py
 
 Edit `dnsmex/local_config.py` if needed. The default assumes the archive was extracted to `~/dasm-epistasis-data`; update `ZENODO_DATA_DIR` if you extracted it elsewhere.
 
-### 3. Set up shmex data path
+### 6. Set up shmex data path
 
 The [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) notebook uses the [shmex](https://github.com/matsengrp/thrifty-experiments-1) package, which expects data at `~/data/v1/`. Create a symlink from the extracted data:
 
@@ -69,6 +65,34 @@ The [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive
 mkdir -p ~/data
 ln -s /path/to/dasm-epistasis-data/v1 ~/data/v1
 ```
+
+## Reproducing the analysis
+
+### Step 1: Run main analysis notebooks
+
+Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S11, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
+
+The remaining notebooks can then be run in any order:
+
+- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy at entrenched vs. non-entrenched sites (Figs 2C, S10)
+- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Fig 4)
+- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12)
+- [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
+- [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) — Whether selection at the entrenched sites depends on CDR-H3 length, charge and hydrophobicity (Fig S16). Needs the SASA data.
+- [`within_family_validation.ipynb`](within_family_validation.ipynb) — Per-V-gene-allele median selection factors at the within-family entrenched sites, checking whether pooling alleles within a family drives the entrenchment calls (Fig S2)
+- [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
+- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
+- [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Needs the SASA data and the output of [`run_contact_analysis.py`](run_contact_analysis.py).
+
+### Step 2: Aggregate results and create supplementary data files
+
+```bash
+python create_combined_entrenched_sites.py    # combined_entrenched_sites.csv
+python entrenchment_threshold_sensitivity.py  # Figs S3-S5
+python create_combined_validation_table.py    # combined_validation_table_entrenched_for_paper.csv
+```
+
+## Analyses with extra requirements (optional)
 
 ### Solvent Accessible Surface Area (SASA) data (optional)
 
@@ -99,32 +123,6 @@ You will need:
 
 ```bash
 python run_sasa_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/sasa_human_chothia_anarci.csv
-```
-
-## Reproducing the analysis
-
-### Step 1: Run main analysis notebooks
-
-Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S11, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
-
-The remaining notebooks can then be run in any order:
-
-- [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy at entrenched vs. non-entrenched sites (Figs 2C, S10)
-- [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Fig 4)
-- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12)
-- [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
-- [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) — Whether selection at the entrenched sites depends on CDR-H3 length, charge and hydrophobicity (Fig S16). Needs the SASA data.
-- [`within_family_validation.ipynb`](within_family_validation.ipynb) — Per-V-gene-allele median selection factors at the within-family entrenched sites, checking whether pooling alleles within a family drives the entrenchment calls (Fig S2)
-- [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
-- [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
-- [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Needs the SASA data and the output of [`run_contact_analysis.py`](run_contact_analysis.py).
-
-### Step 2: Aggregate results and create supplementary data files
-
-```bash
-python create_combined_entrenched_sites.py    # combined_entrenched_sites.csv
-python entrenchment_threshold_sensitivity.py  # Figs S3-S5
-python create_combined_validation_table.py    # combined_validation_table_entrenched_for_paper.csv
 ```
 
 ## Figure-to-source mapping
