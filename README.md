@@ -68,11 +68,9 @@ ln -s /path/to/dasm-epistasis-data/v1 ~/data/v1
 
 ## Reproducing the analysis
 
-### Step 1: Run main analysis notebooks
+Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S11, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks and scripts.
 
-Run [`v_families_entrenchment_dasm.ipynb`](v_families_entrenchment_dasm.ipynb) first — it produces Figs 2, 5, S6, S11, and writes entrenchment results to `_output/entrenchment_analysis/` that are required by the other notebooks.
-
-The remaining notebooks can then be run in any order:
+The remaining notebooks and scripts can then be run in any order:
 
 - [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy at entrenched vs. non-entrenched sites (Figs 2C, S10)
 - [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Fig 4)
@@ -83,14 +81,9 @@ The remaining notebooks can then be run in any order:
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
 - [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
 - [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Needs the SASA data and the output of [`run_contact_analysis.py`](run_contact_analysis.py).
-
-### Step 2: Aggregate results and create supplementary data files
-
-```bash
-python create_combined_entrenched_sites.py    # combined_entrenched_sites.csv
-python entrenchment_threshold_sensitivity.py  # Figs S3-S5
-python create_combined_validation_table.py    # combined_validation_table_entrenched_for_paper.csv
-```
+- [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) — Threshold sensitivity of the reciprocal-entrenchment calls (Figs S3–S5)
+- [`create_combined_entrenched_sites.py`](create_combined_entrenched_sites.py) — Writes `_output/combined_entrenched_sites.csv` (supplementary data file)
+- [`create_combined_validation_table.py`](create_combined_validation_table.py) — Writes `_output/combined_validation_table_entrenched_for_paper.csv` (supplementary data file). Run after the two `rates_analysis_*` notebooks.
 
 ## Analyses with extra requirements (optional)
 
