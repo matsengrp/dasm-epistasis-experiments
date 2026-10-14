@@ -178,7 +178,7 @@ Then run [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb
 | Fig S15 | Germline allele misassignment simulation | [`germline-misassignment-simulation/partis_misassignment_analysis.ipynb`](germline-misassignment-simulation/partis_misassignment_analysis.ipynb) |
 | Fig S16 | Dependence of selection on CDR-H3 length, and burial by the CDR-H3 against its length | [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) |
 | Fig S17 | Atomic contacts within 5 Å at IGHV3 within-family entrenched sites | [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) |
-| Table S1 | Hydrogen bonding at sites 73–75 | Manually created (ChimeraX); see [`site_73_structural/hbond_raw_data.md`](site_73_structural/hbond_raw_data.md) |
+| Table S1 | Hydrogen bonding at sites 73–75 | ChimeraX `hbonds` (interactive); command and per-structure output in [`site_73_structural/hbond_raw_data.md`](site_73_structural/hbond_raw_data.md) |
 
 ### Supplementary data files
 
