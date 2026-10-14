@@ -38,7 +38,7 @@ SASA output, so the two can be merged.
 
 ## Usage
 
-    python run_contact_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/contacts_human_chothia.csv
+    python run_contact_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/contacts_human_chothia.csv.gz
 """
 
 import argparse

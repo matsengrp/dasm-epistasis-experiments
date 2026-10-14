@@ -74,24 +74,22 @@ The remaining notebooks and scripts can then be run in any order:
 
 - [`shannon_entropy_entrenchment.ipynb`](shannon_entropy_entrenchment.ipynb) — Shannon entropy at entrenched vs. non-entrenched sites (Figs 2C, S10)
 - [`grantham_distance_analysis.ipynb`](grantham_distance_analysis.ipynb) — Physicochemical distance (Grantham) of entrenched substitutions (Fig 4)
-- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12)
+- [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb) — Relative solvent accessibility (RSA) and partner contact analysis at entrenched sites (Figs 3, 5C, S7, S8, S9, S12). Uses the committed SASA data.
 - [`germline.ipynb`](germline.ipynb) — V-gene pairwise amino acid similarity (Fig S1)
-- [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) — Whether selection at the entrenched sites depends on CDR-H3 length, charge and hydrophobicity (Fig S16). Needs the SASA data.
+- [`cdr3_dependence_of_selection.ipynb`](cdr3_dependence_of_selection.ipynb) — Whether selection at the entrenched sites depends on CDR-H3 length, charge and hydrophobicity (Fig S16). Uses the committed SASA data.
 - [`within_family_validation.ipynb`](within_family_validation.ipynb) — Per-V-gene-allele median selection factors at the within-family entrenched sites, checking whether pooling alleles within a family drives the entrenchment calls (Fig S2)
 - [`rates_analysis_productive_non_productive.ipynb`](rates_analysis_productive_non_productive.ipynb) — Mutation rate validation using out-of-frame sequences as neutral baseline (Fig 7A)
 - [`rates_analysis_productive_w_thrifty_multi.ipynb`](rates_analysis_productive_w_thrifty_multi.ipynb) — Mutation rate validation using Thrifty-predicted neutral rates as baseline (Figs 7B-C, S14). **Note:** This notebook loads a large dataframe so run with enough memory.
-- [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Needs the SASA data and the output of [`run_contact_analysis.py`](run_contact_analysis.py).
+- [`contact_distance_analysis.ipynb`](contact_distance_analysis.ipynb) — Atomic contacts within 5 Å at entrenched sites, compared with the RSA burial analysis (Fig S17). Uses the committed SASA and contact data.
 - [`entrenchment_threshold_sensitivity.py`](entrenchment_threshold_sensitivity.py) — Threshold sensitivity of the reciprocal-entrenchment calls (Figs S3–S5)
 - [`create_combined_entrenched_sites.py`](create_combined_entrenched_sites.py) — Writes `_output/combined_entrenched_sites.csv` (supplementary data file)
 - [`create_combined_validation_table.py`](create_combined_validation_table.py) — Writes `_output/combined_validation_table_entrenched_for_paper.csv` (supplementary data file). Run after the two `rates_analysis_*` notebooks.
 
 ## Analyses with extra requirements
 
-### Solvent Accessible Surface Area (SASA) data (optional)
+### Regenerating the structural data (SASA and contacts)
 
-Pre-computed SASA results are included in the repository (`_output/sasa_human_chothia_anarci.csv.gz`) and are loaded automatically by [`solvent_accessibility_analysis.ipynb`](solvent_accessibility_analysis.ipynb). Most users do not need to regenerate this data.
-
-If you would like to regenerate this data from scratch, there are two steps:
+The SAbDab ANARCI annotations ([`data/sabdab/sabdab_anarci_annotations.tsv`](data/sabdab/sabdab_anarci_annotations.tsv)), SASA results (`_output/sasa_human_chothia_anarci.csv.gz`) and atomic contact results (`_output/contacts_human_chothia.csv.gz`) are committed to the repository and loaded automatically by the notebooks. You only need the steps below to regenerate them from the PDB structures.
 
 #### Step 1: Generate V/J gene annotations with ANARCI
 
@@ -102,11 +100,9 @@ pip install anarci
 python annotate_sabdab_anarci.py --output data/sabdab/sabdab_anarci_annotations.tsv
 ```
 
-Pre-computed annotations are included in [`data/sabdab/sabdab_anarci_annotations.tsv`](data/sabdab/sabdab_anarci_annotations.tsv), so this step can be skipped unless you want to regenerate them.
+#### Step 2: Run the SASA and contact pipelines
 
-#### Step 2: Run the SASA analysis pipeline
-
-[`run_sasa_analysis.py`](run_sasa_analysis.py) computes per-residue solvent accessibility across six structural scenarios (full complex, antibody alone, heavy chain alone, etc.) and derives burial effects from each binding partner. It applies a 6-stage filtering pipeline: file discovery, organism filtering (exact match), chain completeness, heavy-chain-only antibody exclusion, V/J gene consistency, and optional file limits.
+[`run_sasa_analysis.py`](run_sasa_analysis.py) computes per-residue solvent accessibility across six structural scenarios (full complex, antibody alone, heavy chain alone, etc.) and derives burial effects from each binding partner. It applies a 6-stage filtering pipeline: file discovery, organism filtering (exact match), chain completeness, heavy-chain-only antibody exclusion, V/J gene consistency, and optional file limits. [`run_contact_analysis.py`](run_contact_analysis.py) computes per-residue atomic distances and contact counts on the same filtered structures.
 
 You will need:
 
@@ -116,6 +112,7 @@ You will need:
 
 ```bash
 python run_sasa_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/sasa_human_chothia_anarci.csv
+python run_contact_analysis.py --scheme opig-chothia --organism "homo sapiens" --output _output/contacts_human_chothia.csv.gz
 ```
 
 ### Germline misassignment simulation
