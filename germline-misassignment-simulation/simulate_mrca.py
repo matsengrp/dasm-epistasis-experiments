@@ -32,12 +32,13 @@ from netam import pretrained
 from netam.dasm import DASMBurrito, DASMDataset
 from netam.dnsm import DNSMBurrito, DNSMDataset
 from dnsmex.dxsm_data import filter_valid_pcps, dataset_dict
+from dnsmex.local import localify
 
 
 # --- Paths ---
 RODRIGUEZ_WITH_NAIVE = dataset_dict["v1rodriguezWithNaive"]
 RODRIGUEZ_NO_NAIVE = dataset_dict["v1rodriguez"]
-DASM_CREPE_PATH = "/home/nharel/re/dnsm-experiments-1/dasm-train/trained_models/dasm_4m-v1jaffeCC+v1tangCC-joint"
+DASM_CREPE_PATH = localify("DASM_TRAINED_MODELS_DIR/dasm_4m-v1jaffeCC+v1tangCC-joint")
 
 SEED = 42
 

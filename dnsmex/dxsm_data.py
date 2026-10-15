@@ -4,7 +4,6 @@ from warnings import warn
 from tqdm import tqdm
 
 from netam.framework import load_pcp_df, add_shm_model_outputs_to_pcp_df
-from netam.models import DEFAULT_NEUTRAL_MODEL
 from netam.sequences import assert_pcp_valid
 from netam import pretrained
 from netam.common import parallel_df_apply
@@ -12,6 +11,8 @@ from dnsmex.local import localify
 
 # Provides pd.DataFrame.progress_apply:
 tqdm.pandas()
+
+NEUTRAL_MODEL = "ThriftyHumV0.2-59"  # Thrifty neutral model (thrifty-models v0.2.0)
 
 
 def validate_dataset_name_for_filesystem_safety(dataset_name: str):
@@ -526,7 +527,7 @@ def pcp_df_of_nickname(
         pcp_df = filter_valid_pcps(pcp_df)
 
     if add_shm_outputs:
-        neutral_model_name = DEFAULT_NEUTRAL_MODEL
+        neutral_model_name = NEUTRAL_MODEL
         warn(
             f"Using {neutral_model_name}. Make sure this is an appropriate choice for your model, "
             "or use `netam.framework.add_shm_model_outputs_to_pcp_df` directly to provide the "

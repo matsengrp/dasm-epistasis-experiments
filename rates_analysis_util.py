@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+from matplotlib.transforms import Bbox
 import seaborn as sns
 from scipy import stats
 from scipy.odr import ODR, Model, RealData
@@ -379,6 +380,140 @@ def add_mutation_counts_per_branch_for_branch_length(df):
     return df
 
 
+def _fit_dasm_vs_rates(compare_dasm_rates):
+    """Return (n, Pearson r, orthogonal slope, orthogonal intercept) of
+    log_selection_factor on log_ratio, ignoring NaNs."""
+    x = compare_dasm_rates['log_ratio']
+    y = compare_dasm_rates['log_selection_factor']
+    mask = ~(np.isnan(x) | np.isnan(y))
+    x_clean = x[mask]
+    y_clean = y[mask]
+    r_value, _ = stats.pearsonr(x_clean, y_clean)
+    slope, intercept = orthogonal_regression(x_clean.values, y_clean.values)
+    return len(x_clean), r_value, slope, intercept
+
+
+def _format_equation(slope, intercept):
+    if intercept >= 0:
+        return f'y = {slope:.3f}x + {intercept:.3f}'
+    return f'y = {slope:.3f}x - {abs(intercept):.3f}'
+
+
+def plot_dasm_vs_rates_comparison_pair(panels, entrenched_sites_aas, site_color_map,
+                                       title_extra='', save_path=None):
+    """Side-by-side DASM vs observed/expected rate scatters with one shared legend.
+
+    Each panel is drawn as in ``plot_dasm_vs_rates_comparison``: grey points for
+    all substitutions, entrenched substitutions colored by site and shaped by V
+    family, and an orthogonal regression line.
+
+    This is the version used for the paper's main-text validation figure, with the
+    out-of-frame and Thrifty baselines side by side (the cell in
+    ``rates_analysis_productive_w_thrifty_multi.ipynb`` that saves
+    ``rodriguez_oof_and_*_thrifty_validation_dasm_vs_rates_comparison.pdf``). Sizes and fonts
+    are set for that two-panel layout on a printed page.
+
+    Parameters:
+    -----------
+    panels : list of (str, pd.DataFrame)
+        (title, compare_dasm_rates) per panel, left to right. Each DataFrame has
+        the columns required by ``plot_dasm_vs_rates_comparison``.
+    entrenched_sites_aas : pd.DataFrame
+        Columns 'site', 'v_family', 'amino_acid', 'target_amino_acid'.
+    site_color_map : dict
+        Site name -> color.
+    title_extra : str, optional
+        Text appended after n in every panel title.
+    save_path : str, optional
+        If provided, save the figure here.
+    """
+    v_family_markers = {'IGHV1': 'o', 'IGHV3': 'X', 'IGHV4': 's'}
+    entrenched_keys = entrenched_sites_aas.rename(
+        columns={'amino_acid': 'parent_aa', 'target_amino_acid': 'child_aa'})
+
+    entrenched_per_panel = []
+    for _, compare_dasm_rates in panels:
+        entrenched = pd.merge(entrenched_keys, compare_dasm_rates,
+                              on=['site', 'v_family', 'parent_aa', 'child_aa'], how='inner')
+        entrenched['site'] = entrenched['site'].astype(str)
+        entrenched_per_panel.append(entrenched)
+    sites_shown = sort_antibody_sites(
+        set().union(*(set(e['site']) for e in entrenched_per_panel)))
+    v_families_shown = [v for v in v_family_markers
+                        if any((e['v_family'] == v).any() for e in entrenched_per_panel)]
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(7.2 * len(panels), 7.2))
+    for ax, (title, compare_dasm_rates), entrenched in zip(axes, panels, entrenched_per_panel):
+        n, r_value, slope, intercept = _fit_dasm_vs_rates(compare_dasm_rates)
+        print(f"{title.splitlines()[0]}: n = {n}, R² = {r_value**2:.3f}, "
+              f"{len(entrenched)} entrenched points")
+
+        ax.scatter(compare_dasm_rates['log_ratio'], compare_dasm_rates['log_selection_factor'],
+                   color='grey', alpha=0.3, s=20, linewidths=0)
+        sns.scatterplot(data=entrenched, x='log_ratio', y='log_selection_factor',
+                        hue='site', hue_order=sites_shown, palette=site_color_map,
+                        style='v_family', markers=v_family_markers,
+                        s=60, legend=False, ax=ax)
+
+        all_vals = pd.concat([compare_dasm_rates['log_ratio'],
+                              compare_dasm_rates['log_selection_factor']])
+        lim_min, lim_max = np.floor(all_vals.min()), np.ceil(all_vals.max())
+        ax.set_xlim(lim_min - 0.1, lim_max + 0.1)
+        ax.set_ylim(lim_min - 0.1, lim_max + 0.1)
+        ticks = np.arange(lim_min, lim_max + 0.5, 1.0)
+        ax.set_xticks(ticks)
+        ax.set_yticks(ticks)
+        ax.set_box_aspect(1)
+        ax.tick_params(labelsize=13)
+
+        ax.plot([lim_min, lim_max], slope * np.array([lim_min, lim_max]) + intercept,
+                color='blue', linewidth=2)
+        ax.axvline(0, color='black', linestyle=':', linewidth=1)
+        ax.axhline(0, color='black', linestyle=':', linewidth=1)
+
+        ax.set_xlabel('Observed Rate / Expected Rate (log)', fontsize=14)
+        ax.set_ylabel('')
+        ax.set_title(f'{title}\n{_format_equation(slope, intercept)}, '
+                     f'R² = {r_value**2:.3f}\nn = {n} {title_extra}', fontsize=13, pad=10)
+    axes[0].set_ylabel('DASM Selection Factor (log)', fontsize=14)
+
+    def marker_handle(marker, color):
+        return plt.Line2D([0], [0], marker=marker, linestyle='', markersize=9,
+                          markerfacecolor=color, markeredgecolor='white', color=color)
+
+    fig.subplots_adjust(wspace=0.35, bottom=0.17)
+
+    # Two legend rows with their own column widths: site colors, then V family
+    # markers and the fit. Each row is a frameless legend; one frame encloses both.
+    legend_style = dict(loc='upper center', fontsize=12, frameon=False,
+                        handletextpad=0.0, columnspacing=0.6, borderpad=0.2)
+    site_handles = [marker_handle('o', 'grey')] + [marker_handle('o', site_color_map[s])
+                                                   for s in sites_shown]
+    site_labels = ['Other sites'] + list(sites_shown)
+    site_legend = fig.legend(site_handles, site_labels, ncol=len(site_handles),
+                             bbox_to_anchor=(0.5, 0.075), **legend_style)
+
+    other_handles = [marker_handle(v_family_markers[v], 'black') for v in v_families_shown]
+    other_handles.append(plt.Line2D([0], [0], color='blue', linewidth=2))
+    other_labels = v_families_shown + ['Orthogonal regression']
+    fig.canvas.draw()
+    to_fig = fig.transFigure.inverted()
+    site_box = site_legend.get_window_extent().transformed(to_fig)
+    # The fit's line handle spans the whole handle box, so it needs text padding.
+    other_legend = fig.legend(other_handles, other_labels, ncol=len(other_handles),
+                              bbox_to_anchor=(0.5, site_box.y0),
+                              **{**legend_style, 'handletextpad': 0.5})
+    fig.canvas.draw()
+    box = Bbox.union([site_box, other_legend.get_window_extent().transformed(to_fig)])
+    fig.add_artist(plt.Rectangle((box.x0, box.y0), box.width, box.height,
+                                 transform=fig.transFigure, fill=False,
+                                 edgecolor='0.8', linewidth=0.8))
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches='tight')
+    plt.show()
+
+
 def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site_color_map,
                                    savefig_prefix=None, title="Comparison of Observed/Expected Rates Ratio vs DASM Selection Factor", 
                                    title_extra='', figures_dir='figures/'):
@@ -387,6 +522,9 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
 
     Uses orthogonal regression (appropriate when both variables have measurement error)
     and reports Pearson correlation.
+
+    Single-panel version for exploring one baseline within its notebook. The paper's
+    main-text figure uses ``plot_dasm_vs_rates_comparison_pair`` instead.
 
     Parameters:
     -----------
@@ -415,21 +553,9 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     --------
     None (displays plot and optionally saves to file)
     """
-    # Calculate regression statistics
     x = compare_dasm_rates['log_ratio']
     y = compare_dasm_rates['log_selection_factor']
-
-    # Remove any NaN values for regression calculation
-    mask = ~(np.isnan(x) | np.isnan(y))
-    x_clean = x[mask]
-    y_clean = y[mask]
-    n = len(x_clean)
-
-    # Calculate Pearson correlation
-    r_value, p_value = stats.pearsonr(x_clean, y_clean)
-
-    # Calculate orthogonal regression
-    slope_ortho, intercept_ortho = orthogonal_regression(x_clean.values, y_clean.values)
+    n, r_value, slope_ortho, intercept_ortho = _fit_dasm_vs_rates(compare_dasm_rates)
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -494,12 +620,7 @@ def plot_dasm_vs_rates_comparison(compare_dasm_rates, entrenched_sites_aas, site
     plt.xlabel('Observed Rate / Expected Rate (log)', fontsize=13)
     plt.ylabel('DASM Selection Factor (log)', fontsize=13)
 
-    # Format the equation for the title
-    if intercept_ortho >= 0:
-        equation_ortho = f'y = {slope_ortho:.3f}x + {intercept_ortho:.3f}'
-    else:
-        equation_ortho = f'y = {slope_ortho:.3f}x - {abs(intercept_ortho):.3f}'
-
+    equation_ortho = _format_equation(slope_ortho, intercept_ortho)
     title = f'{title}\n{equation_ortho}, R² = {r_value**2:.3f}\nn = {n} {title_extra}'
     plt.title(title, fontsize=14)
 

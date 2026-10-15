@@ -7,10 +7,9 @@ from torch.nn import functional as F
 from tqdm import tqdm
 
 from netam import pretrained
-from netam.models import DEFAULT_NEUTRAL_MODEL
 from netam.dasm import DASMDataset
 from netam.sequences import BASES, CODONS
-from dnsmex.dxsm_data import pcp_df_of_nickname, get_anarci_dict
+from dnsmex.dxsm_data import NEUTRAL_MODEL, pcp_df_of_nickname, get_anarci_dict
 from netam.oe_plot import annotate_sites_df, get_numbering_dict
 from dnsmex.local import localify
 
@@ -136,10 +135,10 @@ class NeutralMutabilityDataset(DASMDataset):
                 f"branch_length_mode must be one of {valid_modes}, got '{branch_length_mode}'"
             )
         # Always infer model_known_token_count from neutral model
-        neutral_crepe = pretrained.load(DEFAULT_NEUTRAL_MODEL, device="cpu")
+        neutral_crepe = pretrained.load(NEUTRAL_MODEL, device="cpu")
         model_known_token_count = neutral_crepe.encoder.site_count
         print(
-            f"Inferred model_known_token_count={model_known_token_count} from {DEFAULT_NEUTRAL_MODEL}"
+            f"Inferred model_known_token_count={model_known_token_count} from {NEUTRAL_MODEL}"
         )
 
         # Load pcp_df with rates and CSPs already computed!

@@ -23,4 +23,8 @@ CONFIG = {
     "DASM_TEST_OUTPUT_DIR": f"{ZENODO_DATA_DIR}/dasm_test_output",
     # Cache directory for neutral mutability analysis
     "ANALYSIS_CACHE": f"{ZENODO_DATA_DIR}/neutral_mutability_cache",
+    # Root of a local SAbDab PDB mirror (containing pdb/opig-chothia etc.);
+    # only needed to regenerate the committed SASA data, or to generate the contact data,
+    # with run_sasa_analysis.py / run_contact_analysis.py
+    "SABDAB_PDB_DIR": "~/sabdab/pdb-db",
 }
